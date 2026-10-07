@@ -5,5 +5,5 @@ import org.springframework.boot.with
 
 
 fun main(args: Array<String>) {
-	fromApplication<HemonorteApplication>().with(TestcontainersConfiguration::class).run(*args)
+    fromApplication<HemonorteApplication>().with(TestcontainersConfiguration::class).run(*args)
 }

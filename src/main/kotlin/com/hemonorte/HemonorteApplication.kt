@@ -7,5 +7,5 @@ import org.springframework.boot.runApplication
 class HemonorteApplication
 
 fun main(args: Array<String>) {
-	runApplication<HemonorteApplication>(*args)
+    runApplication<HemonorteApplication>(*args)
 }

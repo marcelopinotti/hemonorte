@@ -1,0 +1,29 @@
+# <type>(<optional scope>): <short summary, imperative mood>
+#
+# Body (optional): explain what and why, not how.
+# Wrap lines at ~72 characters.
+#
+# Footer (optional): reference issues, e.g. "Closes #12"
+#
+# ---- types --------------------------------------------------------
+# feat:     new feature
+# fix:      bug fix
+# docs:     documentation only
+# style:    formatting, semicolons, etc (no logic change)
+# refactor: refactoring without changing behavior
+# perf:     performance improvement
+# test:     adding/adjusting tests
+# build:    build, dependencies, Docker
+# ci:       CI/CD pipelines (.github/workflows)
+# chore:    miscellaneous maintenance tasks
+#
+# ---- suggested scopes ---------------------------------------------
+# backend | frontend | desktop | mobile | infra | docs
+#
+# ---- example ---------------------------------------------------------
+# feat(backend): add event creation endpoint
+#
+# Creates the POST /events endpoint, validating start/end date
+# and returning 201 with the created resource.
+#
+# Closes #34

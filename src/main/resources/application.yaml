@@ -3,6 +3,11 @@ spring:
     name: hemonorte
 
 
+  datasource:
+    url: jdbc:postgresql://localhost:5432/hemonorte
+    username: postgres
+    password: ${POST_PASSWORD}
+    driver-class-name: org.postgresql.Driver
 
   jpa:
     open-in-view: false

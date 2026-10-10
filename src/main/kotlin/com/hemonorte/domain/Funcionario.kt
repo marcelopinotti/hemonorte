@@ -1,29 +1,30 @@
 package com.hemonorte.domain
 
+import com.hemonorte.domain.enums.PerfilFuncionario
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
+import jakarta.persistence.EnumType
+import jakarta.persistence.Enumerated
 import jakarta.persistence.Id
 import jakarta.persistence.Table
-import java.time.Instant
-import java.time.LocalDate
-import java.util.*
+import java.util.UUID
 
 @Entity
-@Table(name = "doador")
-class Doador(
+@Table(name = "funcionario")
+class Funcionario(
+    matricula: String,
     nome: String,
     email: String,
     senhaHash: String,
-    tipagem: String,
-    dataNascimento: LocalDate,
-    genero: Char,
-
-    @Column(nullable = false, unique = true, updatable = false, length = 11)
-    val cpf: String,
+    perfil: PerfilFuncionario,
 
     @Id
     val id: UUID = UUID.randomUUID(),
 ) {
+
+    @Column(nullable = false, unique = true)
+    var matricula: String = validarMatricula(matricula)
+        protected set
 
     @Column(nullable = false)
     var nome: String = validarNome(nome)
@@ -37,24 +38,17 @@ class Doador(
     var senhaHash: String = validarSenhaHash(senhaHash)
         protected set
 
-    @Column(nullable = false, length = 3)
-    var tipagem: String = validarTipagem(tipagem)
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    var perfil: PerfilFuncionario = perfil
         protected set
 
-    @Column(name = "data_nascimento", nullable = false)
-    var dataNascimento: LocalDate = dataNascimento
+    @Column(nullable = false)
+    var ativo: Boolean = true
         protected set
 
-    /** M = masculino, F = feminino. */
-    @Column(nullable = false, length = 1)
-    var genero: Char = validarGenero(genero)
-        protected set
-
-    @Column(name = "criado_em", nullable = false, updatable = false)
-    val criadoEm: Instant = Instant.now()
-
-    init {
-        require(CPF_REGEX.matches(cpf)) { "CPF deve ter 11 dígitos" }
+    fun desativar() {
+        ativo = false
     }
 
     fun alterarNome(novoNome: String) {
@@ -72,17 +66,20 @@ class Doador(
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
-        if (other !is Doador) return false
+        if (other !is Funcionario) return false
         return id == other.id
     }
 
     override fun hashCode(): Int = id.hashCode()
 
-    override fun toString(): String = "Doador(id=$id)"
+    override fun toString(): String = "Funcionario(id=$id)"
 
     private companion object {
-        val CPF_REGEX = Regex("\\d{11}")
-        val TIPAGENS_VALIDAS = setOf("A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-")
+
+        fun validarMatricula(valor: String): String {
+            require(valor.isNotBlank()) { "Matrícula é obrigatória" }
+            return valor.trim()
+        }
 
         fun validarNome(valor: String): String {
             require(valor.isNotBlank()) { "Nome é obrigatório" }
@@ -96,16 +93,6 @@ class Doador(
 
         fun validarSenhaHash(valor: String): String {
             require(valor.isNotBlank()) { "Senha hash é obrigatória" }
-            return valor
-        }
-
-        fun validarTipagem(valor: String): String {
-            require(valor.uppercase() in TIPAGENS_VALIDAS) { "Tipagem sanguínea inválida: $valor" }
-            return valor.uppercase()
-        }
-
-        fun validarGenero(valor: Char): Char {
-            require(valor == 'M' || valor == 'F') { "Gênero deve ser M ou F" }
             return valor
         }
     }

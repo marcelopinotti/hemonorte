@@ -1,6 +1,6 @@
-package com.hemonorte.domain
+package com.hemonorte.model
 
-import com.hemonorte.domain.enums.PerfilFuncionario
+import com.hemonorte.model.enums.PerfilFuncionario
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.EnumType
@@ -22,7 +22,7 @@ class Funcionario(
     val id: UUID = UUID.randomUUID(),
 ) {
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false, unique = true, length = 50)
     var matricula: String = validarMatricula(matricula)
         protected set
 
@@ -39,7 +39,7 @@ class Funcionario(
         protected set
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, length = 20)
     var perfil: PerfilFuncionario = perfil
         protected set
 
@@ -77,8 +77,10 @@ class Funcionario(
     private companion object {
 
         fun validarMatricula(valor: String): String {
-            require(valor.isNotBlank()) { "Matrícula é obrigatória" }
-            return valor.trim()
+            val matricula = valor.trim()
+            require(matricula.isNotEmpty()) { "Matrícula é obrigatória" }
+            require(matricula.length <= 50) { "Matrícula deve ter no máximo 50 caracteres" }
+            return matricula
         }
 
         fun validarNome(valor: String): String {

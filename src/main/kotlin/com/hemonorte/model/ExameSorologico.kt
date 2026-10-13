@@ -1,7 +1,7 @@
-package com.hemonorte.domain
+package com.hemonorte.model
 
-import com.hemonorte.domain.enums.ResultadoFinal
-import com.hemonorte.domain.enums.ResultadoSorologico
+import com.hemonorte.model.enums.ResultadoFinal
+import com.hemonorte.model.enums.ResultadoSorologico
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.EnumType
@@ -10,6 +10,7 @@ import jakarta.persistence.FetchType
 import jakarta.persistence.Id
 import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
+import jakarta.persistence.OneToOne
 import jakarta.persistence.Table
 import java.time.Instant
 import java.util.*
@@ -27,7 +28,7 @@ class ExameSorologico(
     val id: UUID = UUID.randomUUID(),
 ) {
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @OneToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "bolsa_id", nullable = false, updatable = false, unique = true)
     var bolsa: BolsaSangue = bolsa
         protected set

@@ -1,6 +1,6 @@
-package com.hemonorte.domain
+package com.hemonorte.model
 
-import com.hemonorte.domain.enums.StatusBolsa
+import com.hemonorte.model.enums.StatusBolsa
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.EnumType

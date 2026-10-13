@@ -1,4 +1,4 @@
-package com.hemonorte.domain.enums
+package com.hemonorte.model.enums
 
 enum class ResultadoSorologico {
     POSITIVO,

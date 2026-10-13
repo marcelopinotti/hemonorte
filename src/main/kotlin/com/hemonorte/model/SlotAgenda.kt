@@ -1,4 +1,4 @@
-package com.hemonorte.domain
+package com.hemonorte.model
 
 import jakarta.persistence.Column
 import jakarta.persistence.Entity

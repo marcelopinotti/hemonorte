@@ -1,6 +1,6 @@
-package com.hemonorte.domain
+package com.hemonorte.model
 
-import com.hemonorte.domain.enums.StatusBolsa
+import com.hemonorte.model.enums.StatusBolsa
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.EnumType
@@ -8,7 +8,7 @@ import jakarta.persistence.Enumerated
 import jakarta.persistence.FetchType
 import jakarta.persistence.Id
 import jakarta.persistence.JoinColumn
-import jakarta.persistence.ManyToOne
+import jakarta.persistence.OneToOne
 import jakarta.persistence.Table
 import java.time.LocalDate
 import java.util.*
@@ -25,7 +25,7 @@ class BolsaSangue(
     val id: UUID = UUID.randomUUID(),
 ) {
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @OneToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "agendamento_id", nullable = false, updatable = false, unique = true)
     var agendamento: Agendamento = agendamento
         protected set
@@ -43,7 +43,7 @@ class BolsaSangue(
         protected set
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, length = 20)
     var status: StatusBolsa = StatusBolsa.EM_ANALISE
         protected set
 

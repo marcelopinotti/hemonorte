@@ -1,6 +1,6 @@
-package com.hemonorte.domain
+package com.hemonorte.model
 
-import com.hemonorte.domain.enums.StatusAgendamento
+import com.hemonorte.model.enums.StatusAgendamento
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.EnumType
@@ -34,7 +34,7 @@ class Agendamento(
         protected set
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, length = 20)
     var status: StatusAgendamento = StatusAgendamento.PENDENTE
         protected set
 

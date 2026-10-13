@@ -1,4 +1,4 @@
-package com.hemonorte.domain
+package com.hemonorte.model
 
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
@@ -42,7 +42,7 @@ class Doador(
         protected set
 
     @Column(name = "data_nascimento", nullable = false)
-    var dataNascimento: LocalDate = dataNascimento
+    var dataNascimento: LocalDate = validarDataNascimento(dataNascimento)
         protected set
 
     /** M = masculino, F = feminino. */
@@ -102,6 +102,11 @@ class Doador(
         fun validarTipagem(valor: String): String {
             require(valor.uppercase() in TIPAGENS_VALIDAS) { "Tipagem sanguínea inválida: $valor" }
             return valor.uppercase()
+        }
+
+        fun validarDataNascimento(valor: LocalDate): LocalDate {
+            require(!valor.isAfter(LocalDate.now())) { "Data de nascimento não pode ser futura" }
+            return valor
         }
 
         fun validarGenero(valor: Char): Char {

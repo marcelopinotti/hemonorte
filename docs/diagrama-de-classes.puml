@@ -1,0 +1,196 @@
+@startuml
+title HEMONORTE - Diagrama de Classes do Domínio
+
+skinparam backgroundColor #0D0D14
+skinparam shadowing false
+skinparam roundCorner 12
+skinparam linetype ortho
+skinparam defaultFontName Arial
+skinparam defaultFontColor #F5F5F7
+skinparam ArrowColor #9CA3AF
+skinparam ArrowFontColor #D1D5DB
+skinparam class {
+  BackgroundColor #181621
+  BorderColor #A78BFA
+  FontColor #F5F5F7
+  AttributeFontColor #D1D5DB
+  StereotypeFontColor #60A5FA
+}
+skinparam enum {
+  BackgroundColor #111827
+  BorderColor #60A5FA
+  FontColor #F5F5F7
+  AttributeFontColor #D1D5DB
+}
+skinparam note {
+  BackgroundColor #272314
+  BorderColor #FACC15
+  FontColor #FDE68A
+}
+
+hide empty members
+hide circle
+
+package "Cadastro e agenda" #111018 {
+  class Doador <<Entity>> {
+    +id: UUID {readOnly}
+    +cpf: String {readOnly}
+    +nome: String
+    +email: String
+    +senhaHash: String
+    +tipagem: String
+    +dataNascimento: LocalDate
+    +genero: Char
+    +criadoEm: Instant {readOnly}
+    --
+    +alterarNome(novoNome: String): Unit
+    +alterarEmail(novoEmail: String): Unit
+    +alterarSenha(novoHash: String): Unit
+  }
+
+  class SlotAgenda <<Entity>> {
+    +id: UUID {readOnly}
+    +inicio: Instant
+    +capacidade: Int
+  }
+
+  class Agendamento <<Entity>> {
+    +id: UUID {readOnly}
+    +status: StatusAgendamento
+    +codigoComprovante: UUID?
+    +version: Int
+    --
+    +concluir(): Unit
+    +cancelar(): Unit
+    +registrarFalta(): Unit
+  }
+}
+
+package "Atendimento" #111018 {
+  class Funcionario <<Entity>> {
+    +id: UUID {readOnly}
+    +matricula: String
+    +nome: String
+    +email: String
+    +senhaHash: String
+    +perfil: PerfilFuncionario
+    +ativo: Boolean
+    --
+    +desativar(): Unit
+    +alterarNome(novoNome: String): Unit
+    +alterarEmail(novoEmail: String): Unit
+    +alterarSenha(novoHash: String): Unit
+  }
+
+  class Triagem <<Entity>> {
+    +id: UUID {readOnly}
+    +peso: BigDecimal
+    +tatuagemRecente: Boolean
+    +cirurgiaRecente: Boolean
+    +teveFebre: Boolean
+    +apto: Boolean
+    +motivoInaptidao: String?
+  }
+}
+
+package "Coleta, exames e estoque" #111018 {
+  class BolsaSangue <<Entity>> {
+    +id: UUID {readOnly}
+    +tipagem: String
+    +dataColeta: LocalDate
+    +dataValidade: LocalDate
+    +status: StatusBolsa
+    --
+    +transicionarPara(novoStatus: StatusBolsa): Unit
+  }
+
+  class ExameSorologico <<Entity>> {
+    +id: UUID {readOnly}
+    +hiv: ResultadoSorologico
+    +hepatite: ResultadoSorologico
+    +chagas: ResultadoSorologico
+    +resultadoFinal: ResultadoFinal
+    +dataResultado: Instant
+  }
+
+  class HistoricoAuditoria <<Entity>> {
+    +id: UUID {readOnly}
+    +statusAnterior: StatusBolsa {readOnly}
+    +statusNovo: StatusBolsa {readOnly}
+    +dataAlteracao: Instant {readOnly}
+    +motivo: String? {readOnly}
+  }
+
+  class EstoqueMinimo <<Entity>> {
+    +tipagem: String {id, readOnly}
+    +quantidadeCritica: Int
+    --
+    +atualizarQuantidade(novaQuantidade: Int): Unit
+  }
+}
+
+package "Enumerações" #111018 {
+  enum StatusAgendamento {
+    PENDENTE
+    CONCLUIDO
+    CANCELADO
+    FALTOU
+  }
+
+  enum PerfilFuncionario {
+    TRIAGEM
+    COLETA
+    LABORATORIO
+    ADMIN
+  }
+
+  enum StatusBolsa {
+    EM_ANALISE
+    DISPONIVEL
+    UTILIZADA
+    DESCARTADA
+    VENCIDA
+  }
+
+  enum ResultadoSorologico {
+    POSITIVO
+    NEGATIVO
+  }
+
+  enum ResultadoFinal {
+    APROVADO
+    REPROVADO
+  }
+}
+
+Doador "1" -- "0..*" Agendamento : realiza >
+SlotAgenda "1" -- "0..*" Agendamento : recebe >
+Agendamento "1" -- "0..1" Triagem : possui >
+Funcionario "1" -- "0..*" Triagem : executa >
+Agendamento "1" -- "0..1" BolsaSangue : gera >
+BolsaSangue "1" -- "0..1" ExameSorologico : recebe >
+Funcionario "1" -- "0..*" ExameSorologico : registra >
+BolsaSangue "1" -- "0..*" HistoricoAuditoria : possui >
+Funcionario "0..1" -- "0..*" HistoricoAuditoria : registra >
+
+Agendamento ..> StatusAgendamento : usa
+Funcionario ..> PerfilFuncionario : usa
+BolsaSangue ..> StatusBolsa : usa
+HistoricoAuditoria ..> StatusBolsa : usa
+ExameSorologico ..> ResultadoSorologico : usa
+ExameSorologico ..> ResultadoFinal : calcula
+
+EstoqueMinimo ..> BolsaSangue : mesma tipagem
+note right of EstoqueMinimo
+  Relação conceitual por tipagem.
+  O modelo atual não possui FK/JPA
+  entre estoque_minimo e bolsa_sangue.
+end note
+
+legend left
+  |= Relação |= Significado |
+  | -- | associação persistida por FK/JPA |
+  | ..> | dependência de tipo ou regra de domínio |
+endlegend
+
+@enduml

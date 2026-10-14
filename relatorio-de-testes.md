@@ -1,215 +1,207 @@
 # Relatório de QA — Hemonorte
 
-Data da análise: 2026-10-12. Base: checkout local da `main` (@24cbd91), idêntico em conteúdo à `develop` (@f3cacea) — o diff entre os dois é vazio. Este documento é a referência de qualidade do projeto: inventário, arquitetura, achados, plano de testes e a proposta de sexo x identidade de gênero.
+Atualização de 2026-10-14, sobre a `develop` @ b5c3b0f (sincronizada com o remoto): o código novo dos developers (camada HTTP completa de doador e funcionário) e a suíte de testes desta missão. Documento vivo — o que foi corrigido e verificado sai da lista; defeitos novos entram com os próximos IDs.
 
 ## 1. Resumo executivo
 
-O Hemonorte está no começo: Spring Boot 4.1.1, Kotlin 2.3.21, Java 21, Maven via wrapper, PostgreSQL com Flyway. A parte boa — e é a maior parte do código que existe — é o domínio: nove entidades com as regras validadas nos construtores (aptidão na triagem, resultado sorológico, máquina de estados da bolsa, transições de agendamento). A parte que ainda não existe é quase tudo em volta: um repository, um endpoint de hello, um service com um método ativo. E um único teste, de contexto, que exige Docker.
+Os developers entregaram a camada HTTP: CRUD de doador e de funcionário com DTOs próprios, exception handler central e a migration V2 que proíbe data de nascimento futura no banco. Com isso, cinco achados saem da lista por estarem resolvidos (QA-004, QA-005, QA-008, QA-009 e QA-013 — os resíduos viraram achados novos). O de segurança, QA-001, subiu de prioridade: a API de dados agora existe e continua sem uma linha de autenticação.
 
-O que mais me preocupa, nessa ordem: não existe camada de segurança nenhuma (e o sistema vai guardar CPF, sorologia de HIV/hepatite/Chagas e hash de senha); a capacidade dos slots de agenda não é aplicada em lugar nenhum — overbooking na certa quando o fluxo de agendamento for escrito; a auditoria está modelada e nada grava nela; e a idade do doador não é validada. Somem-se os impedimentos do ambiente: sem JDK 21 na máquina, Docker sem confirmação e acesso ao GitHub quebrado, isso pode ser conferido com mais confiabilidade quando o codido estiver pronto.
+A suíte de testes também existe agora: 12 classes, 90 testes, JUnit (jupiter 6.0.3) com kotlin.test, Mockito 5.23 e MockMvc standalone na camada HTTP, rodando com `.\mvnw.cmd clean test` e reportando cobertura via JaCoCo 0.8.15. Resultado desta execução: 82 verdes e 8 vermelhos — e os vermelhos contam a história. Sete são os testes de Bean Validation do cadastro de doador, que falham todos com o mesmo `HV000030`: o `@Pattern` sobre o campo `genero: Char` quebra qualquer POST /api/doador. É o achado mais grave da rodada (QA-024, crítico). O oitavo é o contextLoads, que não sobe nesta sessão porque o Docker é inacessível daqui (seção 9) — precisa rodar no seu terminal ou no CI.
 
-Recomendo começar pelos testes unitários do domínio. Não dependem de nada disso, o JUnit 5 já está no projeto, e a regra mais valiosa (aptidão de doador) é a mais fácil de testar.
+Cobertura medida de verdade pela primeira vez: 50% das linhas e 56,9% das instruções no projeto; o pacote model, dono das regras, em 60,3% de linhas e 73,2% de branches; enums em 100%.
 
 ## 2. Inventário técnico
 
 | Item | Valor |
 |---|---|
 | Linguagem | Kotlin 2.3.21 (`pom.xml:31`) |
-| Java | 21 (`pom.xml:30`) |
-| Framework | Spring Boot 4.1.1 (`pom.xml:5-10`) |
+| Java | 21 (executado com Temurin 21.0.12.1) |
+| Framework | Spring Boot 4.1.1 / Spring Framework 7.0.9 (`pom.xml:5-10`) |
 | Build | Maven 3.9.16 via wrapper 3.3.4 (only-script) |
 | Web | `spring-boot-starter-webmvc`, Jackson 3 Kotlin |
 | Persistência | Data JPA, Flyway + `flyway-database-postgresql`, driver PostgreSQL |
-| Validação | `spring-boot-starter-validation` |
+| Validação | `spring-boot-starter-validation` (Hibernate Validator) |
 | Compilador Kotlin | `-Xjsr305=strict`; plugins spring, jpa, all-open |
 | Documentação | springdoc-openapi 3.1.0 |
-| Testes | `kotlin-test-junit5`, starters `-test`, `spring-boot-testcontainers`, Testcontainers PostgreSQL |
+| Testes | starters `-test`, `spring-boot-testcontainers`, Testcontainers 2.0.5 |
+| Motor de teste | JUnit Jupiter 6.0.3, Mockito 5.23.0, Surefire 3.5.6 |
+| Cobertura | JaCoCo 0.8.15 — adicionado nesta missão; antes não existia |
 | Segurança | nenhuma dependência no pom |
-| Cobertura | JaCoCo não configurado |
 | CI | não existe `.github/` |
-| Banco | PostgreSQL `localhost:5432/hemonorte`; senha via `POST_PASSWORD` (`application.yaml:6-10`) |
+| Banco | PostgreSQL `localhost:5432/hemonorte`; usuário e senha `postgres` fixos no arquivo (`application.yaml:6-10`) |
 | JPA | `open-in-view: false`; `ddl-auto: validate`; timezone JDBC UTC; `show_sql: true` |
-| Servidor | porta 8080; actuator só com `health` |
+| Servidor | porta 8080 (default; a linha explícita saiu do application.yaml) |
 | Commits | Conventional Commits (`.gitmessage`) |
 
 ## 3. Repositório e branches
 
-O checkout está na `main` (@24cbd91), que é a branch protegida — nada foi commitado nela, e nem vai. A `develop` só existe como referência remota local (f3cacea), e o diff entre `main` e `origin/develop` é vazio, com dois merge commits a mais na `main`. Ou seja: este relatório vale igualmente pra develop.
-
-
+A main andou sozinha: o dono do repositório fez o merge do PR #3 (a develop, incluindo o nosso "QA commit"), e main local e remota estão em 96ac045. A develop local está sincronizada com a remota em b5c3b0f, com todo o código novo. O acesso ao GitHub voltou a funcionar nesta sessão — o bloqueio anterior era do ambiente de execução, não das credenciais. Na árvore de trabalho, aguardando aprovação: os 12 arquivos de teste, o `pom.xml` com o JaCoCo e este relatório. Nada commitado; a main segue intocada por este trabalho.
 
 ## 4. Arquitetura
 
 ```
 com.hemonorte
 ├── HemonorteApplication.kt
-├── domain/         Doador, Agendamento, BolsaSangue, Triagem, ExameSorologico,
-│                   SlotAgenda, EstoqueMinimo, Funcionario, HistoricoAuditoria
-│                   + 5 enums (status, perfil, resultados)
-├── application/    DoadorService (listar ativo; cadastrar comentado)
-├── infra/          DoadorRepository
-└── presentation/   HelloController + 2 DTOs sem uso
+├── controller/     DoadorController, FuncionarioController, HelloController,
+│                   ApiExceptionHandler (@RestControllerAdvice)
+├── service/        DoadorService, FuncionarioService
+├── repository/     DoadorRepository, FuncionarioRepository
+├── dto/            Cadastro/Atualizacao e Response de Doador e Funcionario
+│                   (+ FuncionarioRequest, sem uso — QA-030)
+└── model/          as 9 entidades + 5 enums (o antigo domain)
 ```
 
-A separação por camadas está correta, e o domínio é o dono das regras: setters protegidos e comportamento dentro das entidades. Gostei — isso deixa as regras testáveis sem subir nada. Os UNIQUE do esquema batem com as anotações (CPF, e-mail, slot, bolsa↔agendamento, matrícula), e o Flyway junto com o `ddl-auto: validate` pega qualquer desalinhamento entre entidade e schema no boot. Fora isso: `open-in-view` desligado, actuator só com health, senha do banco por variável de ambiente, wrapper reproduzível, `.gitattributes` cuidando do fim de linha. Escolhas certas.
+O desenho agora é o esperado: controller fala com service, service com repository, DTOs nas bordas. Gostei de três mudanças dos developers: os relacionamentos 1-para-1 passaram a ser `@OneToOne` de verdade (bolsa↔agendamento, exame↔bolsa, triagem↔agendamento), batendo com os UNIQUE do esquema; o nascimento ganhou validação em duas camadas (entidade e CHECK no banco, na V2 — com uma sutileza de fuso que registro no QA-031); e a matrícula de funcionário ganhou o limite de 50 caracteres, alinhado ao DTO. O domínio continua sendo o dono das regras — e a suíte mostra que isso paga.
 
-## 5. Testes existentes
+## 5. A suíte de testes
 
-Existe um teste: `contextLoads` (`HemonorteApplicationTests.kt`), `@SpringBootTest` com Testcontainers. Ele sobe um PostgreSQL de container (imagem `postgres:latest`) via `@ServiceConnection`, que substitui o datasource — por isso não precisa da `POST_PASSWORD`. Só isso. Nenhuma regra de domínio tem teste, e rodar esse único teste exige Docker.
+12 classes, todas marcadas `@Tag("unit")` exceto o smoke de integração:
+
+- Model, 75 testes verdes: TriagemTest (9 — bordas do peso, motivos, peso inválido), BolsaSangueTest (14 — transições legais e ilegais, tipagem, validade), DoadorTest (16 — validações e a correção do nascimento), FuncionarioTest (11 — matrícula 50/51, desativar), AgendamentoTest (8), EstoqueMinimoTest (6 — efeito colateral do atualizarQuantidade), ExameSorologicoTest (6), SlotAgendaTest (5).
+- DTO, 7 testes vermelhos por design: CadastroDoadorRequestValidationTest — cada um falha com o mesmo HV000030 e constitui a evidência do QA-024.
+- Controller, 7 testes verdes com MockMvc standalone e serviços mockados: contrato do handler (404 com corpo de erro), listagens, resposta sem `senhaHash` (regressão do antigo QA-008) e duas sentinelas do QA-025, que registram o 405 atual de PUT e DELETE com id — quando a correção chegar, viram asserções de 200 e 204.
+- Integração, 1 não executado daqui: o contextLoads exige o container de PostgreSQL; a sessão de QA não alcança o Docker (seção 9), então ele roda no seu terminal ou no CI.
 
 ## 6. Achados
 
-Organizei por tema; a ordem vai do que preocupa mais pro detalhe. Nenhum achado é crítico hoje porque a API ainda não expõe dado — mas o de segurança vira crítico no dia em que aparecer o primeiro endpoint com dado real.
+Saíram da lista nesta atualização, resolvidos e verificados: QA-004 (nascimento futuro — teste verde comprova; a faixa etária segue na seção 11), QA-005 (a dívida de testes virou suíte), QA-008 (a resposta não expõe mais o hash — teste verifica), QA-009 (o handler existe e o contrato 404 está testado), QA-013 (a exceção de constraint é tratada; o resto virou QA-027) e QA-018/QA-019 (ambiente destravado).
 
-### Segurança (QA-001)
+### QA-024 (crítico) — o cadastro de doador pela API não funciona
 
-Começo pelo que mais me preocupa. Não existe camada de segurança: nenhuma dependência de security no pom, nenhum filtro. `/api/hello`, `/actuator/health` e o Swagger estão abertos. Hoje o dano é pequeno porque quase não tem endpoint; o problema é o destino do sistema — CPF, hash de senha, resultado de HIV, hepatite e Chagas. Meu conselho: decidir o mecanismo de auth (JWT ou sessão) e mapear o `PerfilFuncionario` antes de escrever qualquer controller que exponha dado. Quando existir, os primeiros testes são 401 sem credencial e 403 pra perfil errado.
+`@field:Pattern(regexp = "[MF]")` sobre `val genero: Char` (`dto/CadastroDoadorRequest.kt:26`). Bean Validation só aplica `@Pattern` a CharSequence; com Char, o Hibernate Validator lança `ValidationException (HV000030)` na primeira validação, não importa o payload. Como o DoadorController usa `@Valid`, todo POST /api/doador morre com 500 — a exceção não é IllegalArgumentException nem DataIntegrityViolation, então o handler não pega. Os sete testes de Bean Validation falham exatamente com esse erro: é a evidência em execução. Correção sugerida: `genero` como `String` com o Pattern, ou remover a anotação e deixar a validação com a entidade (que já exige M ou F).
 
-### Agenda (QA-002)
+### QA-001 (crítico) — a API de dados existe e continua sem segurança
 
-O `SlotAgenda` tem capacidade e valida até, mas ninguém consome esse número. Nenhum código conta quantos agendamentos caem num slot, e nada impede o mesmo doador de marcar duas vezes no mesmo horário. Quando o serviço de agendamento for escrito, overbooking é o resultado padrão. A correção natural é invariante no serviço (contagem por slot antes de salvar), com lock ou constraint. Antes disso, decisão de produto: capacidade exata por slot e limite por doador/dia.
+Promovido de alto pra crítico, como o relatório anterior antecipava: os endpoints de doador expõem CPF, nascimento e tipagem; os de funcionário expõem matrícula — tudo sem autenticação, sem autorização, com Swagger aberto. A recomendação não muda (decidir auth e mapear o PerfilFuncionario antes de qualquer dado real entrar), mas com o CRUD inteiro no ar, a urgência mudou.
 
-### Auditoria (QA-003)
+### QA-025 (alto) — atualizar e excluir funcionário é inacessível
 
-Esse é chato, mas em hemocentro é obrigatório. A `HistoricoAuditoria` está toda modelada — entidade, tabela, FK — e o `transicionarPara` da `BolsaSangue` não registra nada. Busquei usos no código: zero. Descarte e utilização de bolsa sem rastro. Resolver exige decisão de arquitetura (evento de domínio ou serviço de transição) e definir o papel do cron que o comentário do SQL menciona. O teste de integração óbvio: transição gera registro com status anterior, novo, data e funcionário.
+`@PutMapping` e `@DeleteMapping` do FuncionarioController (`controller/FuncionarioController.kt:37,41`) estão sem o `/{id}`, mas os métodos recebem `@PathVariable id`. Observado em execução: PUT e DELETE em /api/funcionario/{id} devolvem 405 (Method Not Allowed). Ninguém atualiza ou exclui funcionário por essa API. Correção: `@PutMapping("/{id}")` e `@DeleteMapping("/{id}")`; as duas sentinelas do FuncionarioControllerTest registram o comportamento atual.
 
-### Idade do doador (QA-004)
+### QA-026 (alto) — o hash da senha é responsabilidade do cliente
 
-`dataNascimento` entra direto no construtor, sem checagem (`Doador.kt:44-45`). Aceita data futura e qualquer idade — `LocalDate.now().plusDays(1)` passa. Num sistema de doação isso não pode ficar solto. A faixa usual de protocolo é 16 a 69 anos, mas quem define é a equipe clínica; não dá pra fechar a regra sem eles. O teste unitário fica pronto no dia em que a regra existir: nascimento futuro lança, idades-limite conferidas.
+Todos os DTOs de entrada carregam `senhaHash` pronto, que vai direto pra entidade sem hashing no servidor — não existe BCrypt nem equivalente no pom. Na prática, o cliente manda o que quiser (inclusive texto puro) e o banco guarda como "hash". Pra um sistema que vai ter autenticação, isso mina a fundação: o correto é receber `senha` e derivar o hash no service com `spring-security-crypto`. Relacionado: QA-032.
 
-### Dívida de testes (QA-005)
+### QA-002 (alto) — agenda sem enforcement
 
-A maior parte do valor deste relatório está aqui. Triagem, ExameSorologico, BolsaSangue, Agendamento e as validações do Doador concentram as regras com consequência clínica — aptidão de doador, aprovação de bolsa — e nenhuma tem um único teste. É o primeiro item da matriz (seção 7) e não depende de ambiente.
+Inalterado: ninguém conta agendamentos por slot. Primeiro alvo quando o serviço de agendamento existir.
 
-### Impedimentos de trabalho (QA-018, QA-019)
+### QA-003 (alto) — auditoria modelada, nunca emitida
 
-Não são defeitos de código, mas travam tudo. QA-019 é o acesso ao GitHub descrito na seção 3, somado ao checkout em `main` e à ausência da branch local da develop. QA-018: não tem JDK 21 na máquina (java fora do PATH, `JAVA_HOME` vazio, nada nos diretórios padrão) e não consegui confirmar o estado do daemon do Docker daqui — precisa checar direto no terminal. Sem essas duas coisas, nenhum teste roda.
+Inalterado: a HistoricoAuditoria continua sem emissor.
 
-### O fluxo de doador (QA-023, QA-008, QA-013)
+### Médios
 
-Os três contam a mesma história: o fluxo está incompleto. QA-023 — o `CadastroDoadorRequest` carrega três campos (nome, email, cpf), mas o construtor do `Doador` exige sete; tipagem, nascimento, gênero e senha ficam de fora. Não tem como materializar um doador válido a partir do request atual. QA-008 — o `listar()` devolve a entidade inteira, `senhaHash` incluso, enquanto o `DoadorResponse`, que existe justamente pra evitar isso, não tem uso nenhum. Nenhum controller chama nada disso hoje, então é risco latente; mas no dia em que alguém serializar aquele retorno, o hash de senha vai pro JSON. E QA-013 — o `cadastrar()` (comentado) checa `existsByCpf` e depois salva: corrida clássica entre checagem e insert. O UNIQUE do banco segura a integridade, que é o importante, mas a exceção bruta de constraint chegaria no cliente sem tratamento. Quando ativar, capturar a `DataIntegrityViolationException` e devolver 409.
+QA-006 — a entidade ainda aceita qualquer e-mail com arroba ("a@b" passa se construir a entidade direto). O caminho da API está protegido pelo `@Email` do DTO, então o risco prático caiu; as camadas seguem discordando.
 
-### Regras de identificação (QA-006, QA-007)
+QA-007 — CPF sem dígito verificador ("00000000000" passa nas duas camadas). Decisão de produto em aberto.
 
-Dois furos no mesmo tema. QA-006 — a entidade aceita qualquer e-mail que tenha arroba (`Doador.kt:92-95`): `"a@b"` persiste. Enquanto isso o DTO usa `@Email` de verdade (`CadastroDoadorRequest.kt:11`). As camadas discordam entre si; unifica a regra. QA-007 — o CPF é validado como 11 dígitos e só (`Doador.kt:56-58`): `"00000000000"` passa nas duas camadas. Pra sistema de saúde, onde o CPF é a chave do doador, vale exigir o dígito verificador. Como é decisão de produto, ficou na lista de pendências (seção 11), não como bug fechado.
+QA-010 — bolsa em EM_ANALISE não vira VENCIDA e nenhuma transição olha `dataValidade`. Os 14 testes de transição estão verdes; a decisão clínica continua pendente.
 
-### Contrato de erros (QA-009)
+QA-027 (novo) — qualquer `DataIntegrityViolationException` vira 409 com a mensagem fixa "Doador possui dados vinculados" (`controller/ApiExceptionHandler.kt:19-21`). Serve pro delete de doador com vínculos, mas mente pra conflito de unicidade de CPF/e-mail/matrícula — inclusive de funcionário — e descarta a mensagem original.
 
-Curto: não tem `@RestControllerAdvice` em lugar nenhum, e o domínio inteiro sinaliza erro com `require()`, que lança `IllegalArgumentException`. Na primeira controller que chamar regra de domínio, validação de negócio vai virar 500. Precisa de um advice mapeando pra 4xx antes que isso aconteça — e de um teste MockMvc garantindo que payload inválido nunca volta 500.
+QA-028 (novo) — duplicidade de CPF/e-mail devolve 400 pelo caminho normal (`require` no service) e 409 pelo caminho da corrida (constraint). Mesma condição de negócio, dois códigos. Sugestão: 409 nos dois.
 
-### Máquina de estados da bolsa (QA-010)
+QA-029 (novo) — a senha do banco voltou hardcoded (`postgres`/`postgres`, `application.yaml:9`); a versão com variável de ambiente era melhor e saiu. Pra dev localhost é conveniência; resolver antes de qualquer ambiente compartilhado.
 
-O mapa de transições (`BolsaSangue.kt:52-58`) tem dois problemas. Primeiro: uma bolsa em `EM_ANALISE` não pode ir pra `VENCIDA` — se expirar durante a análise, o caminho é `DESCARTADA`. Se o negócio quiser manter a distinção, a semântica dos dois estados precisa ser definida. Segundo: nenhuma transição olha `dataValidade` — dá pra marcar `VENCIDA` uma bolsa que não venceu. A tabela de transições legais/ilegais está na matriz; a regra temporal depende da decisão clínica (item 3 da seção 11).
+QA-016 — sorologia binária, sem INDETERMINADO. Pergunta clínica.
 
-### Gênero (QA-021, QA-022)
+QA-020 — atualizado: das nove entidades, duas têm repository (Doador e Funcionário); sete seguem fora da integração.
 
-O campo `genero` é um `CHAR(1)` M/F, documentado como "M = masculino, F = feminino" (`Doador.kt:48-51`), sem enum, sem DTO que carregue ou exponha. Não distingue sexo de identidade e não comporta homem trans nem mulher trans (QA-021). E o mais revelador: ninguém consome esse campo — nenhum serviço, controller, regra de triagem ou teste (QA-022). É coleta de dado sem finalidade definida, e em dado sensível isso é problema de LGPD. Análise completa e proposta na seção 13; a decisão é do produto com a equipe clínica.
+QA-021 e QA-022 — genero segue um CHAR M/F sem consumidor funcional, e a nova API de cadastro reforça M/F no DTO. Análise na seção 13.
 
-### Sorologia (QA-016)
+### Baixos
 
-Pergunta clínica: o `ResultadoSorologico` só tem POSITIVO e NEGATIVO. Triagem real devolve indeterminado, e aí o fluxo é repetir o exame. Se o laboratório confirmar a necessidade, o cálculo do resultado final (`ExameSorologico.kt:77-86`) também muda. Não mexeria sem ouvir quem interpreta os exames.
+QA-011 — `postgres:latest` no Testcontainers segue; fixar versão quando a integração rodar no CI.
 
-### Estágio (QA-020)
+QA-012 — `show_sql: true` (`application.yaml:20`).
 
-Mais retrato do momento do que defeito: das nove entidades, só Doador tem repository. O resto do domínio hoje só é exercitável por teste unitário — o que reforça a prioridade da matriz.
+QA-014 — relógios acoplados (`Instant.now()` e agora `LocalDate.now()` na validação de nascimento); se doer, injetar `Clock`.
 
-### Outros pontos menores
+QA-015 — README de uma linha; `modelagem/` fora do versionamento.
 
-Num bloco só, porque nenhum merece seção própria. QA-011: o Testcontainers usa `postgres:latest` (`TestcontainersConfiguration.kt:15`) — imagem que deriva; fixar versão (17, por exemplo). QA-012: `show_sql: true` (`application.yaml:20`) — SQL inteiro no stdout, ruído e risco de dado sensível em log. QA-014: `Instant.now()` espalhado nos construtores (SlotAgenda, `Doador.criadoEm`, `ExameSorologico.dataResultado`) — funciona, mas dificulta teste de borda; se um dia doer, injetar `Clock`. QA-015: README de uma linha e o `.gitignore` excluindo `modelagem/`, que parece ser onde mora a documentação de domínio — contexto perdido. QA-017: nenhum logger no código; quando as transições de bolsa existirem de verdade, vai fazer falta.
+QA-017 — nenhum logger no código.
 
-## 7. Matriz de testes
+QA-030 (novo) — `dto/FuncionarioRequest.kt` não tem uso nenhum e carrega `@NotBlank` sobre um enum (mesma família do QA-024, latente). Remover ou corrigir.
 
-Prioridade um, tudo unitário puro — sem Spring, sem Docker, sem dependência nova:
+QA-031 (novo) — a validação de nascimento usa dois relógios: `LocalDate.now()` na JVM e `CURRENT_DATE` no CHECK da V2, com o JDBC em UTC. Se os fusos divergirem, a janela de meia-noite aceita na entidade o que o banco rejeita (ou vice-versa). Testável quando a integração rodar.
 
-| Alvo | O que testar |
+QA-032 (novo) — atualizar doador exige `senhaHash` preenchido (`AtualizacaoDoadorRequest`): todo update reenvia "senha". Junto com o QA-026, indica que o campo precisa mudar de papel.
+
+QA-033 (novo) — o FuncionarioService não tem `@Transactional` (o DoadorService tem) e as listagens são `findAll` sem paginação. Consistência pra quando crescer.
+
+## 7. Estado real da matriz de testes
+
+| Bloco | Resultado desta execução |
 |---|---|
-| Triagem | peso 49,99 inapta com motivo; 50,00 apta (a fronteira é ≥); 50,01 apta; cada contraindicação isolada inapta com o motivo certo; todas juntas concatenam com "; "; apta → motivo nulo; peso ≤ 0 lança |
-| ExameSorologico | três negativos → APROVADO; qualquer positivo nas outras 7 combinações → REPROVADO |
-| BolsaSangue | transições legais do mapa; ilegais lançam (inclusive EM_ANALISE→VENCIDA); tipagem inválida rejeitada; minúscula normalizada; validade ≤ coleta rejeitada; coleta+1 dia aceita |
-| Agendamento | concluir/cancelar/registrarFalta só de PENDENTE; estados finais lançam; concluir gera comprovante; cancelar não gera |
-| Doador | nome em branco lança e aplica trim; e-mail sem @ lança; tipagem case-insensitive válida e inválida rejeitada; gênero fora de M/F rejeitado; CPF com 10/12 dígitos ou letras rejeitado |
-| Funcionario | matrícula, nome, e-mail e senha em branco lançam; `desativar()` desativa |
-| SlotAgenda | capacidade 0 ou negativa lança; início no passado lança |
-| EstoqueMinimo | tipagem inválida lança; quantidade 0/-5 lança; `atualizarQuantidade` inválida mantém o valor anterior (efeito colateral que vale teste) |
-| CadastroDoadorRequest | Bean Validation puro: um campo inválido por vez, e o payload válido passa limpo |
-| DoadorService.listar | um fake de repository resolve; Mockito já entra com os starters, se preferir |
+| Regras de domínio (8 classes) | 75 testes verdes |
+| Bean Validation do cadastro de doador | 7 vermelhos — evidência do QA-024 |
+| API standalone (Doador e Funcionario) | 7 verdes (incl. 2 sentinelas do QA-025 e o 404 do handler) |
+| Integração (contextLoads: Flyway V1→V2 + validate + wiring) | não executado nesta sessão — seu terminal ou CI |
 
-Depois, com Docker: manter o `contextLoads` (Flyway aplica a V1 e o validate confere entidade contra schema), testar `existsByCpf`/`existsByEmail` no repository e provar que a violação do UNIQUE de CPF vira `DataIntegrityViolationException`.
-
-De API, por enquanto só dá pra cobrir `GET /api/hello` (200 com o corpo exato) e `/actuator/health` (UP). Quando os endpoints de doador aparecerem: 201/400/409, `@Valid` disparado e resposta sem `senhaHash`.
-
-Os unitários acima são também a suíte de regressão — todo bug que fechar ganha teste próprio.
+Na fila: testes direto nos services (duplicidade e a corrida do QA-028), integração real com o container (UNIQUE de CPF, CHECK da V2, fuso do QA-031) e, corrigido o QA-024, a suíte de Bean Validation vira verde sozinha.
 
 ## 8. JUnit 5 e JaCoCo
 
-JUnit 5 já é o motor do projeto (o teste existente usa jupiter e `kotlin-test-junit5` está no pom), então a suíte começa sem mexer em dependência nenhuma. Asserções com `kotlin.test`, que já está no classpath. Marco os testes com `@Tag("unit")`/`@Tag("integration")` desde cedo, pra separar suítes depois sem retrabalho. A ordem que sugiro: Triagem, ExameSorologico, BolsaSangue, Agendamento, Doador, demais entidades, e por último DTOs e serviço — os testes de `cadastrar` dependem do QA-023 e do QA-013.
-
-JaCoCo: nada configurado ainda. A 0.8.13 (ou a estável do dia da implementação) atende Java 21; entra no pom com `prepare-agent` e o `report` amarrado ao ciclo de testes, gerando HTML, CSV e XML em `target/site/jacoco`. Cobertura: ainda não existe número, porque nenhum teste rodou até aqui. Depois de medir do zero, se fizer sentido, limite mínimo só no pacote `domain` e com valor conversado — não global arbitrário. Cobertura é indicador; o que vale é asserção de comportamento.
+Nada de dependência nova pros testes: o JUnit (jupiter 6.0.3) e o Mockito (5.23.0) já vinham pelos starters `-test`; kotlin.test já estava no pom. O que entrou novo foi o JaCoCo 0.8.15 no build — `prepare-agent` no início e o `report` amarrado ao ciclo de testes, gerando HTML, CSV e XML em `target/site/jacoco`. Números reais desta execução: 50% das linhas (234 de 468) e 56,9% das instruções; o pacote model com 60,3% de linhas e 73,2% de branches; enums 100%; dto 42,5%; controller 33,3%; service 0% (mockado nos testes de API — a cobertura deles chega quando os testes de service existirem). É o primeiro número da história do projeto, então sem meta mínima por enquanto; quando a suíte completar, vale conversar um limite só no pacote de domínio, que é onde coverage diz alguma coisa.
 
 ## 9. Automação via Maven
 
+No seu terminal, com o Docker Desktop aberto:
+
 ```powershell
-.\mvnw.cmd clean test   # Windows
-./mvnw clean test      # Linux / CI
+$env:JAVA_HOME = 'C:\Users\Thiago\Desktop\Codando Sadesgraça\Hemonorte\.qa-tools\jdk\jdk-21.0.12.1+1'
+.\mvnw.cmd clean test
 ```
 
-Na primeira execução o wrapper baixa o Maven 3.9.16 (cache em `~/.m2`, precisa de rede). O código de saída é o padrão do Maven — 0 ok, 1 falha — o que serve direto pra CI. Relatórios JUnit em `target/surefire-reports`; JaCoCo em `target/site/jacoco`. Os testes sobem o próprio container de PostgreSQL via `@ServiceConnection`: não tocam banco de produção e não pedem `POST_PASSWORD`. Separar unitário de integração mais tarde é só `@Tag` com surefire/failsafe; não vale complicar antes da hora.
+(o JDK portátil desta missão está em `.qa-tools`; se você instalar um JDK 21 seu, aponte o JAVA_HOME pro dele). A primeira execução baixa o Maven 3.9.16 e as dependências. Relatórios: `target/surefire-reports` (JUnit) e `target/site/jacoco` (cobertura). Exit 0/1 padrão do Maven, pronto pra CI.
+
+Duas notas desta sessão: aqui o TEMP e o repositório local do Maven foram apontados pro workspace (o ambiente não deixa escrever no home), e o container do Testcontainers não sobe daqui — o acesso ao pipe do Docker é negado a processos que não a própria CLI. Por isso o contextLoads e o que depende de banco real (Flyway, validate, UNIQUE) precisam do seu terminal ou de um runner de CI com Docker nativo.
 
 ## 10. Riscos de configuração e persistência
 
-1. A V1 do Flyway já foi aplicada e é intocável — todo ajuste de esquema vem em migração nova (V2+). Editar V1 quebra o checksum.
-2. `POST_PASSWORD` sem default: rodar a aplicação manualmente exige a variável e um Postgres local. Os testes não.
-3. `show_sql` ligado e nenhum perfil dev/prod — a configuração única vai precisar de split antes de produção.
-4. `senhaHash` aceita qualquer string e não existe dependência de crypto no pom. Quando o auth chegar, BCrypt (`spring-security-crypto`) é o caminho natural.
-5. CPF, sorologia e gênero/identidade sem controle de acesso — dado sensível pra efeito de LGPD: coletar o mínimo e restringir por finalidade.
-6. Auditoria sem emissor (QA-003) é risco de rastreabilidade.
-7. Pool Hikari no default e timezone UTC consistente (TIMESTAMPTZ + LocalDate) — adequado por ora, só acompanhar.
+1. V1 e V2 do Flyway já aplicadas são intocáveis — ajuste de esquema vem em migração nova.
+2. Senha do banco hardcoded (QA-029) — resolver antes de ambiente compartilhado.
+3. `senhaHash` confiado ao cliente (QA-026) — a maior pendência de arquitetura junto com o QA-001.
+4. Contrato de duplicidade 400/409 (QA-028).
+5. CPF, sorologia, nascimento e gênero são dado sensível (LGPD): coleta mínima e restrição por finalidade — hoje sem auth nenhuma.
+6. Auditoria sem emissor (QA-003).
+7. Hikari no default e UTC consistente — adequado por ora.
 
 ## 11. Decisões de negócio pendentes
 
 1. CPF exige dígito verificador? (QA-007 — produto)
-2. Faixa etária mínima/máxima e consentimento? (QA-004 — clínica/produto)
+2. Faixa etária mínima/máxima e consentimento? (a parte de data futura os developers já implementaram; falta a regra clínica — clínica/produto)
 3. VENCIDA x DESCARTADA: bolsa expirada em análise vai pra qual? `EM_ANALISE→VENCIDA` deve existir? (QA-010 — clínica/produto)
 4. Sorologia admite INDETERMINADO com reteste? (QA-016 — clínica)
-5. Hash de senha (BCrypt?) e mecanismo de auth (QA-001 — produto/tech)
+5. Hash de senha (BCrypt?) e mecanismo de auth (QA-001 e QA-026 — produto/tech)
 6. Regras de capacidade de slot e limite por doador (QA-002 — produto)
 7. Quem grava a HistoricoAuditoria, e o que é o cron citado no SQL (QA-003 — produto/tech)
 8. Vocabulário de identidade de gênero, exposição na API, coleta opcional, nome social (QA-021/QA-022 — clínica/produto)
 
 ## 12. Plano por etapas
 
-Etapa 0 — destravar o chão: restaurar o acesso ao GitHub, conferir a develop (fetch), criar a branch local, instalar o JDK 21 (Temurin), subir o Docker Desktop e confirmar com `docker info`.
-Etapa 1 — testes unitários do domínio, na ordem da matriz. Sem dependência nova.
-Etapa 2 — JaCoCo no pom e a primeira medição de cobertura.
-Etapa 3 — integração (repository) e API; fixar a versão do Postgres do container.
-Etapa 4 — separar suítes com `@Tag`, se o volume justificar.
-Etapa 5 — CI no GitHub Actions rodando o mesmo comando, na develop.
-Etapa 6 — funcional de sexo/identidade, depois que o produto responder a decisão 8.
+Etapa 0 (ambiente) — feita: JDK 21, Maven, Docker e acesso GitHub destravados.
+Etapa 1 (testes unitários do domínio) — feita: 75 verdes.
+Etapa 2 (JaCoCo + primeira medição) — feita: 50% de linhas, domínio a 60,3%.
+Etapa 3 (correções dos developers) — QA-024 e QA-025 bloqueiam a API; QA-026, QA-027 e QA-028 na sequência.
+Etapa 4 (services + integração real) — testes direto nos services; contextLoads no seu terminal/CI.
+Etapa 5 (CI) — GitHub Actions com runner Docker, na develop.
+Etapa 6 (sexo/identidade) — depois da decisão 8.
 
 ## 13. Sexo e identidade de gênero
 
-O campo hoje: `genero CHAR(1) NOT NULL` na tabela doador (`V1__create_schema.sql:13`), um Char M/F validado no construtor (`Doador.kt:107-110`), sem enum, sem DTO que carregue ou exponha, e nenhuma regra que leia — a Triagem usa só peso e três booleans. Ou seja: a mudança de modelo é tecnicamente barata agora, porque não tem consumidor pra quebrar. O significado clínico não está definido em código nenhum, e não vou presumir.
+O campo hoje: `genero CHAR(1) NOT NULL`, um Char M/F validado na entidade — e agora também no DTO de cadastro (`@Pattern [MF]`, o mesmo que causa o QA-024). Sem enum próprio, sem consumidor funcional: nenhuma regra lê o campo (a Triagem usa só peso e três booleans). A camada HTTP nova não mudou a discussão: continua tecnicamente barato mexer porque não há consumidor pra quebrar.
 
-Dá pra modelar de três jeitos. Deixar como está não representa doadores trans — e é isso que motivou a demanda. Estufar o campo atual com mais valores mistura sexo e identidade num conceito só (e o CHAR(1) ainda limita). O terceiro jeito é separar, e é o que recomendo: manter a coluna atual com semântica explícita de sexo biológico/registral — que é a que os protocolos clínicos consultam — e criar um campo opcional de identidade de gênero, com enum próprio. O vocabulário é decisão de produto/clínica; uma proposta de trabalho seria HOMEM_CIS, HOMEM_TRANS, MULHER_CIS, MULHER_TRANS, NAO_BINARIO, OUTRO, NAO_INFORMADO — e cabe discutir também um modelo mais simples, identidade + flag trans.
+A recomendação não muda: separar sexo (biológico/registral, a coluna atual, que os protocolos clínicos consultam) de identidade de gênero (campo novo, opcional, com enum de vocabulário definido pelo produto e pela clínica — proposta inicial: HOMEM_CIS, HOMEM_TRANS, MULHER_CIS, MULHER_TRANS, NAO_BINARIO, OUTRO, NAO_INFORMADO). Três regras se mantêm: coleta opcional (quem não manda o campo segue funcionando), nenhum preenchimento automático pra registro existente (NULL, sem inferência) e aptidão nunca pela identidade isoladamente. A migration fica V3 agora (a V2 dos developers ocupou o número): `ALTER TABLE doador ADD COLUMN identidade_genero VARCHAR(20);` — aditiva, rollback documentado como DROP em migração futura, filtros tratando NULL explicitamente.
 
-Três regras que considero inegociáveis na implementação: coleta opcional (nullable; cliente que não manda o campo continua funcionando); nenhum preenchimento automático pra registro existente — quem já está no banco fica com NULL, sem inferência nenhuma; e aptidão nunca é função da identidade isoladamente — critério clínico usa o campo fisiológico. Vale ainda registrar a ideia de nome social pra discussão futura, mesmo fora deste escopo.
-
-Migração aditiva, em arquivo novo (a V1 está aplicada e não se mexe):
-
-```sql
--- V2 - Identidade de gênero (opcional) para Doador
-ALTER TABLE doador ADD COLUMN identidade_genero VARCHAR(20);
-```
-
-Rollback documentado: V3 com `DROP COLUMN`, porque o Flyway community não tem undo. Novos filtros e relatórios terão que tratar NULL explicitamente. Testes, quando a funcionalidade for aprovada: unitário do Doador (identidade válida aceita, valor fora do enum rejeita, ausência aceita, sexo segue M/F — e HOMEM_TRANS com sexo F é válido; é exatamente a independência dos conceitos, e merece teste próprio); serialização do DTO com e sem o campo; container subindo V1→V2 com registros pré-existentes em NULL; e regressão das validações existentes do Doador.
-
-
+Testes, quando a decisão sair: identidade válida aceita, fora do enum rejeitada, ausência aceita, sexo seguindo M/F — e HOMEM_TRANS com sexo F é válido (independência semântica documentada em teste). Detalhe de ordem: a correção do QA-024 precisa vir antes, senão o cadastro nem roda pra testar.
 
 ## 14. Próximas ações
 
+1. Sua revisão desta atualização e autorização dos commits planejados: um com `pom.xml` + os 12 arquivos de teste, outro exclusivo com `relatorio-de-testes.md` — ambos com a mensagem combinada, na develop.
+2. Developers: QA-024 (crítico) e QA-025 — a suíte marca os dois sozinha.
+3. Rodar `.\mvnw.cmd clean test` no seu terminal pra validar o contextLoads (Flyway V1→V2 + validate do Hibernate).
+4. Decisões da seção 11 — a 8 destrava a funcionalidade de gênero.
 
-Etapa 0: acesso GitHub, conferir a develop, criar branch local, JDK 21, Docker.
-Etapas 1 e 2 (testes unitários e JaCoCo) na sequência.
-Responder as decisões da seção 11 — principalmente a 8, que destrava a funcionalidade de gênero.
-
-Ressalva final, que vale pro documento inteiro: nada aqui é resultado de execução. É leitura de código e inspeção do repositório; sem JDK e sem Docker confirmado, nenhum teste rodou, então não existe métrica de cobertura ou de comportamento pra citar. Quando a Etapa 0 sair, os números entram.
+Ressalva final: desta vez tem execução — os 90 testes correram no Maven 3.9.16 + Temurin 21.0.12.1 + Boot 4.1.1 nesta máquina, e os números da seção 8 são do JaCoCo dessa rodada. O que não rodou: o contextLoads e tudo que exige banco real, porque o Docker não é alcançável desta sessão (pipe negado a processos que não a CLI). Nada aqui é estimativa: veio de log ou de código.

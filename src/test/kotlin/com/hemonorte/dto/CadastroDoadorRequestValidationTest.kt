@@ -18,7 +18,7 @@ class CadastroDoadorRequestValidationTest {
         senhaHash: String = "hash",
         tipagem: String = "O+",
         dataNascimento: LocalDate = LocalDate.now().minusYears(30),
-        genero: Char = 'F',
+        genero: String = "F",
     ) = CadastroDoadorRequest(
         nome = nome,
         email = email,
@@ -82,7 +82,7 @@ class CadastroDoadorRequestValidationTest {
         // lancar ValidationException aqui em vez de violacao, o endpoint POST /api/doador
         // esta quebrado em todos os casos - defeito a registrar com esta execucao como evidencia.
         assertTrue(
-            validator.validate(request(genero = 'X')).any { it.propertyPath.toString() == "genero" },
+            validator.validate(request(genero = "X")).any { it.propertyPath.toString() == "genero" },
             "esperava violacao em 'genero'",
         )
     }

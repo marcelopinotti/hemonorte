@@ -24,5 +24,5 @@ data class CadastroDoadorRequest(
     val dataNascimento: LocalDate,
 
     @field:Pattern(regexp = "[MF]", message = "Gênero deve ser M ou F")
-    val genero: Char,
+    val genero: String,
 )

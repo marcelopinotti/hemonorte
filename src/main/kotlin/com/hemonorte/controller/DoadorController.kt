@@ -25,7 +25,7 @@ class DoadorController(private val doadorService: DoadorService)
             senhaHash = request.senhaHash,
             tipagem = request.tipagem,
             dataNascimento = request.dataNascimento,
-            genero = request.genero,
+            genero = request.genero.single(),
         ).toResponse()
 
     @GetMapping

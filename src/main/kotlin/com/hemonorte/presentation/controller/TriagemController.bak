@@ -1,0 +1,21 @@
+package com.hemonorte.presentation.controller
+
+import com.hemonorte.application.dto.TriagemRequest
+import com.hemonorte.application.dto.TriagemResponse
+import jakarta.validation.Valid
+import org.springframework.http.HttpStatus
+import org.springframework.http.ResponseEntity
+import org.springframework.web.bind.annotation.*
+
+@RestController
+@RequestMapping("/triagens")
+class TriagemController(
+    private val triagemService: TriagemService
+) {
+
+    @PostMapping
+    fun realizarTriagem(@RequestBody @Valid request: TriagemRequest): ResponseEntity<TriagemResponse> {
+        val resposta = triagemService.realizarTriagem(request)
+        return ResponseEntity.status(HttpStatus.CREATED).body(resposta)
+    }
+}

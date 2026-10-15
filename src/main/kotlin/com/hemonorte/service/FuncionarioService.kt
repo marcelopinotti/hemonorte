@@ -6,11 +6,13 @@ import com.hemonorte.dto.FuncionarioResponse
 import com.hemonorte.dto.toResponse
 import com.hemonorte.model.Funcionario
 import com.hemonorte.repository.FuncionarioRepository
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.stereotype.Service
 import java.util.*
 
 @Service
 class FuncionarioService(private val funcionarioRepository: FuncionarioRepository) {
+    private val passwordEncoder = BCryptPasswordEncoder()
 
     fun cadastrar(request: CadastroFuncionarioRequest): FuncionarioResponse {
         require(!funcionarioRepository.existsByMatricula(request.matricula)) {
@@ -20,12 +22,14 @@ class FuncionarioService(private val funcionarioRepository: FuncionarioRepositor
             "E-mail já cadastrado"
         }
 
+        val senhaCriptografada = passwordEncoder.encode(request.senhaHash)
+
         val funcionario = Funcionario(
             matricula = request.matricula,
             nome = request.nome,
             email = request.email,
             senhaHash = request.senhaHash,
-            perfil = request.perfil,
+            perfil = request.perfil
         )
 
         return funcionarioRepository.save(funcionario).toResponse()
@@ -40,15 +44,18 @@ class FuncionarioService(private val funcionarioRepository: FuncionarioRepositor
             ?: funcionarioNaoEncontrado()
         require(request.email == funcionario.email || !funcionarioRepository.existsByEmail(request.email)) { "E-mail já cadastrado" }
 
+        funcionario.alterarNome(request.nome)
         funcionario.alterarEmail(request.email)
-        funcionario.alterarSenha(request.senhaHash)
 
         return funcionarioRepository.save(funcionario).toResponse()
     }
 
     fun excluir(id: UUID) {
         val funcionario = funcionarioRepository.findById(id).orElse(null) ?: funcionarioNaoEncontrado()
-        funcionarioRepository.delete(funcionario)
+
+        // Soft delete para preservar vínculos históricos e clínicos
+        funcionario.desativar()
+        funcionarioRepository.save(funcionario)
     }
 
     private fun funcionarioNaoEncontrado(): Nothing {

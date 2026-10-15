@@ -34,11 +34,12 @@ class FuncionarioController(private val service: FuncionarioService) {
     @GetMapping("/{id}")
     fun buscar(@PathVariable id: UUID): FuncionarioResponse = service.buscar(id)
 
-    @PutMapping
+    @PutMapping("/{id}")
     fun atualizar(@PathVariable id: UUID, @Valid @RequestBody request: AtualizacaoFuncionarioRequest): FuncionarioResponse =
         service.atualizar(id, request)
 
-    @DeleteMapping
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
     fun excluir(@PathVariable id: UUID) {
         service.excluir(id)
     }

@@ -5,9 +5,9 @@ import jakarta.validation.constraints.NotBlank
 
 data class AtualizacaoFuncionarioRequest(
     @field:NotBlank
-    @field:Email
-    val email: String,
+    val nome: String,
 
     @field:NotBlank
-    val senhaHash: String,
+    @field:Email
+    val email: String,
 )

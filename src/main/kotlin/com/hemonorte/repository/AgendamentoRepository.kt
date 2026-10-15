@@ -9,4 +9,5 @@ import java.util.UUID
 @Repository
 interface AgendamentoRepository : JpaRepository<Agendamento, UUID> {
     fun findByDoadorIdAndStatus(doadorId: UUID, status: StatusAgendamento): List<Agendamento>
+    fun findBySlotIdAndStatus(slotId: UUID, status: StatusAgendamento): List<Agendamento>
 }

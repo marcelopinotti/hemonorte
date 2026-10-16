@@ -1,9 +1,9 @@
 package com.hemonorte.controller
 
+import com.hemonorte.dto.RealizarAgendamentoRequest
 import com.hemonorte.model.Agendamento
 import com.hemonorte.service.AgendamentoService
 import jakarta.validation.Valid
-import jakarta.validation.constraints.NotNull
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
@@ -33,11 +33,3 @@ class AgendamentoController(
         return ResponseEntity.ok(agendamento)
     }
 }
-
-data class RealizarAgendamentoRequest(
-    @field:NotNull
-    val doadorId: UUID,
-
-    @field:NotNull
-    val slotId: UUID
-)

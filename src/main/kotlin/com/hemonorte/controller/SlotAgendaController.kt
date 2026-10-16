@@ -1,16 +1,13 @@
 package com.hemonorte.controller
 
+import com.hemonorte.dto.CriarSlotRequest
 import com.hemonorte.model.SlotAgenda
 import com.hemonorte.service.SlotAgendaService
 import jakarta.validation.Valid
-import jakarta.validation.constraints.Future
-import jakarta.validation.constraints.Min
-import jakarta.validation.constraints.NotNull
 import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
-import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
 
@@ -38,12 +35,3 @@ class SlotAgendaController(
         return ResponseEntity.ok(slots)
     }
 }
-
-data class CriarSlotRequest(
-    @field:NotNull
-    @field:Future
-    val inicio: Instant,
-
-    @field:Min(1)
-    val capacidade: Int
-)

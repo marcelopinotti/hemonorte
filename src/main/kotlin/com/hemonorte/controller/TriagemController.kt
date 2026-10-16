@@ -1,13 +1,12 @@
 package com.hemonorte.controller
 
+import com.hemonorte.dto.RealizarTriagemRequest
 import com.hemonorte.model.Triagem
 import com.hemonorte.service.TriagemService
 import jakarta.validation.Valid
-import jakarta.validation.constraints.NotNull
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
-import java.math.BigDecimal
 import java.util.UUID
 
 @RestController
@@ -35,23 +34,3 @@ class TriagemController(
         return ResponseEntity.ok(triagem)
     }
 }
-
-data class RealizarTriagemRequest(
-    @field:NotNull
-    val agendamentoId: UUID,
-
-    @field:NotNull
-    val peso: BigDecimal,
-
-    @field:NotNull
-    val tatuagemRecente: Boolean,
-
-    @field:NotNull
-    val cirurgiaRecente: Boolean,
-
-    @field:NotNull
-    val teveFebre: Boolean,
-
-    @field:NotNull
-    val funcionarioId: UUID
-)

@@ -1,11 +1,9 @@
 package com.hemonorte.controller
 
+import com.hemonorte.dto.EstoqueMinimoRequest
 import com.hemonorte.model.EstoqueMinimo
 import com.hemonorte.service.EstoqueService
 import jakarta.validation.Valid
-import jakarta.validation.constraints.NotBlank
-import jakarta.validation.constraints.NotNull
-import jakarta.validation.constraints.Positive
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 
@@ -27,12 +25,3 @@ class EstoqueController(
         return ResponseEntity.ok(criticos)
     }
 }
-
-data class EstoqueMinimoRequest(
-    @field:NotBlank
-    val tipagem: String,
-
-    @field:NotNull
-    @field:Positive
-    val quantidadeCritica: Int
-)

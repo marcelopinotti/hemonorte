@@ -1,10 +1,9 @@
 package com.hemonorte.controller
 
+import com.hemonorte.dto.RegistrarExameRequest
 import com.hemonorte.model.ExameSorologico
-import com.hemonorte.model.enums.ResultadoSorologico
 import com.hemonorte.service.ExameSorologicoService
 import jakarta.validation.Valid
-import jakarta.validation.constraints.NotNull
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
@@ -34,20 +33,3 @@ class ExameSorologicoController(
         return ResponseEntity.ok(exame)
     }
 }
-
-data class RegistrarExameRequest(
-    @field:NotNull
-    val bolsaId: UUID,
-
-    @field:NotNull
-    val funcionarioId: UUID,
-
-    @field:NotNull
-    val hiv: ResultadoSorologico,
-
-    @field:NotNull
-    val hepatite: ResultadoSorologico,
-
-    @field:NotNull
-    val chagas: ResultadoSorologico
-)

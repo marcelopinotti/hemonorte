@@ -1,13 +1,12 @@
 package com.hemonorte.controller
 
+import com.hemonorte.dto.RegistrarColetaRequest
 import com.hemonorte.model.Coleta
 import com.hemonorte.service.ColetaService
 import jakarta.validation.Valid
-import jakarta.validation.constraints.NotNull
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
-import java.math.BigDecimal
 import java.util.UUID
 
 @RestController
@@ -32,14 +31,3 @@ class ColetaController(
         return ResponseEntity.ok(coleta)
     }
 }
-
-data class RegistrarColetaRequest(
-    @field:NotNull
-    val triagemId: UUID,
-
-    @field:NotNull
-    val funcionarioId: UUID,
-
-    @field:NotNull
-    val volumeMl: BigDecimal
-)

@@ -1,6 +1,8 @@
+
 package com.hemonorte.controller
 
 import com.hemonorte.dto.CriarSlotRequest
+import com.hemonorte.dto.SlotDisponibilidadeResponse
 import com.hemonorte.model.SlotAgenda
 import com.hemonorte.service.SlotAgendaService
 import jakarta.validation.Valid
@@ -16,7 +18,6 @@ import java.time.ZoneId
 class SlotAgendaController(
     private val slotAgendaService: SlotAgendaService
 ) {
-
     @PostMapping
     fun criarSlot(@RequestBody @Valid request: CriarSlotRequest): ResponseEntity<SlotAgenda> {
         val slot = slotAgendaService.criarSlot(request.inicio, request.capacidade)
@@ -27,7 +28,7 @@ class SlotAgendaController(
     fun listarPorPeriodo(
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) inicio: LocalDateTime,
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) fim: LocalDateTime
-    ): ResponseEntity<List<SlotAgenda>> {
+    ): ResponseEntity<List<SlotDisponibilidadeResponse>> {
         val instantInicio = inicio.atZone(ZoneId.systemDefault()).toInstant()
         val instantFim = fim.atZone(ZoneId.systemDefault()).toInstant()
 

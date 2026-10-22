@@ -1,10 +1,12 @@
 package com.hemonorte.controller
 
+import com.hemonorte.dto.AtualizacaoFuncionarioRequest
 import com.hemonorte.dto.FuncionarioResponse
 import com.hemonorte.model.enums.PerfilFuncionario
 import com.hemonorte.service.FuncionarioService
 import org.junit.jupiter.api.Tag
 import org.mockito.Mockito
+import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
@@ -31,22 +33,40 @@ class FuncionarioControllerTest {
     )
 
     @Test
-    fun `PUT com id devolve 405 porque o mapping nao declara o segmento de id - QA-025`() {
-        // Sentinela do defeito: comportamento atual observado em execucao e 405.
-        // Contrato desejado apos a correcao do QA-025: 200 com o corpo atualizado (trocar a assercao aqui).
-        mockMvc.perform(put("/api/funcionario/{id}", UUID.randomUUID()))
-            .andExpect(status().isMethodNotAllowed)
+    fun `PUT por id devolve 200 com o funcionario atualizado - contrato corrigido do QA-025`() {
+        // Sentinela do 405 convertida em prova do contrato conforme a issue #15: o QA-025 foi
+        // corrigido com @PutMapping("/{id}") e PUT em /api/funcionario/{id} agora alcanca o handler.
+        val id = UUID.randomUUID()
+        // Stub com argumentos concretos: o DTO e data class, entao a igualdade por valor
+        // casa com a instancia que o controller desserializa do corpo. Sem matchers, evitando
+        // o pitfall Kotlin+Mockito de eq()/any() devolverem null para parametros nao-nulos.
+        val corpo = AtualizacaoFuncionarioRequest(nome = "Marcos Lima", email = "marcos@hemonorte.br")
+        Mockito.`when`(service.atualizar(id, corpo)).thenReturn(resposta())
+
+        mockMvc.perform(
+            put("/api/funcionario/{id}", id)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"nome":"Marcos Lima","email":"marcos@hemonorte.br"}""")
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.matricula").value("M123"))
+            .andExpect(jsonPath("$.senhaHash").doesNotExist())
     }
 
     @Test
-    fun `DELETE com id devolve 405 porque o mapping nao declara o segmento de id - QA-025`() {
-        // Sentinela do defeito: 405 atual; contrato desejado apos a correcao: 204.
-        mockMvc.perform(delete("/api/funcionario/{id}", UUID.randomUUID()))
-            .andExpect(status().isMethodNotAllowed)
+    fun `DELETE por id devolve 204 - contrato corrigido do QA-025`() {
+        // Sentinela do 405 convertida conforme a issue #15: o QA-025 foi corrigido com
+        // @DeleteMapping("/{id}") e DELETE em /api/funcionario/{id} agora alcanca o handler.
+        val id = UUID.randomUUID()
+
+        mockMvc.perform(delete("/api/funcionario/{id}", id))
+            .andExpect(status().isNoContent)
+
+        Mockito.verify(service).excluir(id)
     }
 
     @Test
-    fun `GET lista funcionarios com 200 - contraste com PUT e DELETE quebrados`() {
+    fun `GET lista funcionarios com 200`() {
         Mockito.`when`(service.listar()).thenReturn(listOf(resposta("M1"), resposta("M2")))
 
         mockMvc.perform(get("/api/funcionario"))

@@ -4,8 +4,11 @@ import com.hemonorte.model.Doador
 import com.hemonorte.service.DoadorService
 import org.junit.jupiter.api.Tag
 import org.mockito.Mockito
+import org.springframework.dao.DataIntegrityViolationException
+import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
@@ -60,5 +63,31 @@ class DoadorControllerTest {
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.length()").value(1))
             .andExpect(jsonPath("$[0].nome").value("Ana Souza"))
+    }
+
+    @Test
+    fun `POST com conflito de unicidade devolve 409 - contrato do handler para duplicidade`() {
+        // Caminho da corrida de unicidade (QA-028): quando o banco rejeita por CPF/e-mail
+        // duplicados, o handler responde 409 - hoje com a mensagem fixa do QA-027. Quando
+        // melhorarem a mensagem por conflito, atualizar a assercao conscientemente.
+        Mockito.`when`(
+            service.cadastrar(
+                nome = "Ana Souza",
+                email = "ana@email.com",
+                cpf = "12345678901",
+                senhaHash = "hash-valido",
+                tipagem = "O+",
+                dataNascimento = LocalDate.of(1996, 8, 15),
+                genero = 'F',
+            )
+        ).thenThrow(DataIntegrityViolationException("duplicidade de CPF"))
+
+        mockMvc.perform(
+            post("/api/doador")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"nome":"Ana Souza","email":"ana@email.com","cpf":"12345678901","senhaHash":"hash-valido","tipagem":"O+","dataNascimento":"1996-08-15","genero":"F"}""")
+        )
+            .andExpect(status().isConflict)
+            .andExpect(jsonPath("$.erro").value("Doador possui dados vinculados"))
     }
 }

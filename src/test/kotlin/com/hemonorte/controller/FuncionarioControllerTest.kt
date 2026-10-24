@@ -1,6 +1,7 @@
 package com.hemonorte.controller
 
 import com.hemonorte.dto.AtualizacaoFuncionarioRequest
+import com.hemonorte.dto.CadastroFuncionarioRequest
 import com.hemonorte.dto.FuncionarioResponse
 import com.hemonorte.model.enums.PerfilFuncionario
 import com.hemonorte.service.FuncionarioService
@@ -10,6 +11,7 @@ import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
@@ -84,5 +86,36 @@ class FuncionarioControllerTest {
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.matricula").value("M123"))
             .andExpect(jsonPath("$.senhaHash").doesNotExist())
+    }
+
+    @Test
+    fun `POST cria funcionario com 201 sem expor senhaHash - contrato da issue 6`() {
+        val corpo = CadastroFuncionarioRequest(
+            matricula = "M123",
+            nome = "Marcos Lima",
+            email = "marcos@hemonorte.br",
+            senhaHash = "hash",
+            perfil = PerfilFuncionario.TRIAGEM,
+        )
+        Mockito.`when`(service.cadastrar(corpo)).thenReturn(resposta())
+
+        mockMvc.perform(
+            post("/api/funcionario")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"matricula":"M123","nome":"Marcos Lima","email":"marcos@hemonorte.br","senhaHash":"hash","perfil":"TRIAGEM"}""")
+        )
+            .andExpect(status().isCreated)
+            .andExpect(jsonPath("$.matricula").value("M123"))
+            .andExpect(jsonPath("$.senhaHash").doesNotExist())
+    }
+
+    @Test
+    fun `PUT com corpo invalido devolve 400 - Bean Validation do contrato da issue 6`() {
+        mockMvc.perform(
+            put("/api/funcionario/{id}", UUID.randomUUID())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"nome":"","email":"marcos@hemonorte.br"}""")
+        )
+            .andExpect(status().isBadRequest)
     }
 }

@@ -1,6 +1,7 @@
 package com.hemonorte.controller
 
 import com.hemonorte.dto.AtualizacaoFuncionarioRequest
+import com.hemonorte.dto.AlteracaoSenhaRequest
 import com.hemonorte.dto.CadastroFuncionarioRequest
 import com.hemonorte.dto.FuncionarioResponse
 import com.hemonorte.service.FuncionarioService
@@ -37,6 +38,12 @@ class FuncionarioController(private val service: FuncionarioService) {
     @PutMapping("/{id}")
     fun atualizar(@PathVariable id: UUID, @Valid @RequestBody request: AtualizacaoFuncionarioRequest): FuncionarioResponse =
         service.atualizar(id, request)
+
+    @PutMapping("/{id}/senha")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    fun alterarSenha(@PathVariable id: UUID, @Valid @RequestBody request: AlteracaoSenhaRequest) {
+        service.alterarSenha(id, request.senha)
+    }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)

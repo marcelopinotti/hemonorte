@@ -1,7 +1,8 @@
 package com.hemonorte.controller
 
 import com.hemonorte.dto.RealizarTriagemRequest
-import com.hemonorte.model.Triagem
+import com.hemonorte.dto.TriagemResponse
+import com.hemonorte.dto.toResponse
 import com.hemonorte.service.TriagemService
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
@@ -16,7 +17,7 @@ class TriagemController(
 ) {
 
     @PostMapping
-    fun realizarTriagem(@RequestBody @Valid request: RealizarTriagemRequest): ResponseEntity<Triagem> {
+    fun realizarTriagem(@RequestBody @Valid request: RealizarTriagemRequest): ResponseEntity<TriagemResponse> {
         val triagem = triagemService.realizarTriagem(
             agendamentoId = request.agendamentoId,
             peso = request.peso,
@@ -25,12 +26,12 @@ class TriagemController(
             teveFebre = request.teveFebre,
             funcionarioId = request.funcionarioId
         )
-        return ResponseEntity.status(HttpStatus.CREATED).body(triagem)
+        return ResponseEntity.status(HttpStatus.CREATED).body(triagem.toResponse())
     }
 
     @GetMapping("/agendamento/{agendamentoId}")
-    fun buscarPorAgendamento(@PathVariable agendamentoId: UUID): ResponseEntity<Triagem> {
+    fun buscarPorAgendamento(@PathVariable agendamentoId: UUID): ResponseEntity<TriagemResponse> {
         val triagem = triagemService.buscarPorAgendamento(agendamentoId)
-        return ResponseEntity.ok(triagem)
+        return ResponseEntity.ok(triagem.toResponse())
     }
 }

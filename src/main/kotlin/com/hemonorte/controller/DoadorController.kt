@@ -1,6 +1,7 @@
 package com.hemonorte.controller
 
 import com.hemonorte.dto.AtualizacaoDoadorRequest
+import com.hemonorte.dto.AlteracaoSenhaRequest
 import com.hemonorte.dto.CadastroDoadorRequest
 import com.hemonorte.dto.DoadorResponse
 import com.hemonorte.dto.toResponse
@@ -22,7 +23,7 @@ class DoadorController(private val doadorService: DoadorService)
             nome = request.nome,
             email = request.email,
             cpf = request.cpf,
-            senhaHash = request.senhaHash,
+            senha = request.senha,
             tipagem = request.tipagem,
             dataNascimento = request.dataNascimento,
             genero = request.genero.single(),
@@ -38,7 +39,20 @@ class DoadorController(private val doadorService: DoadorService)
     fun atualizar(
         @PathVariable id: UUID,
         @Valid @RequestBody request: AtualizacaoDoadorRequest,
-    ): DoadorResponse = doadorService.atualizar(id, request.nome, request.email, request.senhaHash).toResponse()
+    ): DoadorResponse = doadorService.atualizar(
+        id = id,
+        nome = request.nome,
+        email = request.email,
+        tipagem = request.tipagem,
+        dataNascimento = request.dataNascimento,
+        genero = request.genero.single(),
+    ).toResponse()
+
+    @PutMapping("/{id}/senha")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    fun alterarSenha(@PathVariable id: UUID, @Valid @RequestBody request: AlteracaoSenhaRequest) {
+        doadorService.alterarSenha(id, request.senha)
+    }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)

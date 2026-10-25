@@ -55,11 +55,7 @@ class AgendamentoControllerTest {
     }
 
     @Test
-    fun `SENTINELA QA-043 - resposta do agendamento expoe o hash da senha do doador`() {
-        // POST /agendamentos devolve a entidade crua: o DTO de doador protege o hash, mas
-        // esta resposta serializa a entidade inteira (senhaHash sem @JsonIgnore). Contrato
-        // da #16: ausencia de senha/hash nas respostas. Quando corrigirem (DTO de resposta
-        // ou @JsonIgnore), este teste inverte para doesNotExist.
+    fun `resposta do agendamento nao expoe hash da senha do doador`() {
         val doadorId = UUID.randomUUID()
         val slotId = UUID.randomUUID()
         Mockito.`when`(service.realizarAgendamento(doadorId, slotId))
@@ -71,7 +67,7 @@ class AgendamentoControllerTest {
                 .content("""{"doadorId":"$doadorId","slotId":"$slotId"}""")
         )
             .andExpect(status().isCreated)
-            .andExpect(jsonPath("$.doador.senhaHash").value("hash-valido"))
+            .andExpect(jsonPath("$.doador.senhaHash").doesNotExist())
     }
 
     @Test

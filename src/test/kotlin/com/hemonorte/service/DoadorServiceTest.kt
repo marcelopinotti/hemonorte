@@ -4,6 +4,7 @@ import com.hemonorte.model.Doador
 import com.hemonorte.repository.DoadorRepository
 import org.junit.jupiter.api.Tag
 import org.mockito.Mockito
+import org.springframework.security.crypto.password.PasswordEncoder
 import java.time.LocalDate
 import java.util.Optional
 import kotlin.test.Test
@@ -13,17 +14,19 @@ import kotlin.test.assertEquals
 class DoadorServiceTest {
 
     private val repository = Mockito.mock(DoadorRepository::class.java)
-    private val service = DoadorService(repository)
+    private val passwordEncoder = Mockito.mock(PasswordEncoder::class.java)
+    private val service = DoadorService(repository, passwordEncoder)
 
     @Test
     fun `cadastro persiste doador`() {
-        Mockito.`when`(repository.save(Mockito.any(Doador::class.java))).thenAnswer { it.arguments[0] }
+        Mockito.`when`(passwordEncoder.encode("senha-segura")).thenReturn("hash-seguro")
+        Mockito.`when`(repository.saveAndFlush(Mockito.any(Doador::class.java))).thenAnswer { it.arguments[0] }
 
         val doador = service.cadastrar(
             nome = "Ana Souza",
             email = "ana@email.com",
             cpf = "12345678901",
-            senhaHash = "hash-seguro",
+            senha = "senha-segura",
             tipagem = "O+",
             dataNascimento = LocalDate.now().minusYears(30),
             genero = 'F',
@@ -43,12 +46,18 @@ class DoadorServiceTest {
             dataNascimento = LocalDate.now().minusYears(30),
             genero = 'F',
         )
-        val hashOriginal = doador.senhaHash
         Mockito.`when`(repository.findById(doador.id)).thenReturn(Optional.of(doador))
-        Mockito.`when`(repository.save(doador)).thenReturn(doador)
+        Mockito.`when`(repository.saveAndFlush(doador)).thenReturn(doador)
 
-        val atualizado = service.atualizar(doador.id, "Ana Lima", "ana.lima@email.com", hashOriginal)
+        val atualizado = service.atualizar(
+            id = doador.id,
+            nome = "Ana Lima",
+            email = "ana.lima@email.com",
+            tipagem = doador.tipagem,
+            dataNascimento = doador.dataNascimento,
+            genero = doador.genero,
+        )
 
-        assertEquals(hashOriginal, atualizado.senhaHash)
+        assertEquals("hash-original", atualizado.senhaHash)
     }
 }

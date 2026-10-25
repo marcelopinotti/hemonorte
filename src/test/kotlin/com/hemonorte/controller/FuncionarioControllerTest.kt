@@ -36,19 +36,18 @@ class FuncionarioControllerTest {
 
     @Test
     fun `PUT por id devolve 200 com o funcionario atualizado - contrato corrigido do QA-025`() {
-        // Sentinela do 405 convertida em prova do contrato conforme a issue #15: o QA-025 foi
-        // corrigido com @PutMapping("/{id}") e PUT em /api/funcionario/{id} agora alcanca o handler.
         val id = UUID.randomUUID()
-        // Stub com argumentos concretos: o DTO e data class, entao a igualdade por valor
-        // casa com a instancia que o controller desserializa do corpo. Sem matchers, evitando
-        // o pitfall Kotlin+Mockito de eq()/any() devolverem null para parametros nao-nulos.
-        val corpo = AtualizacaoFuncionarioRequest(nome = "Marcos Lima", email = "marcos@hemonorte.br")
+        val corpo = AtualizacaoFuncionarioRequest(
+            nome = "Marcos Lima",
+            email = "marcos@hemonorte.br",
+            perfil = PerfilFuncionario.TRIAGEM,
+        )
         Mockito.`when`(service.atualizar(id, corpo)).thenReturn(resposta())
 
         mockMvc.perform(
             put("/api/funcionario/{id}", id)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"nome":"Marcos Lima","email":"marcos@hemonorte.br"}""")
+                .content("""{"nome":"Marcos Lima","email":"marcos@hemonorte.br","perfil":"TRIAGEM"}"""),
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.matricula").value("M123"))
@@ -57,8 +56,6 @@ class FuncionarioControllerTest {
 
     @Test
     fun `DELETE por id devolve 204 - contrato corrigido do QA-025`() {
-        // Sentinela do 405 convertida conforme a issue #15: o QA-025 foi corrigido com
-        // @DeleteMapping("/{id}") e DELETE em /api/funcionario/{id} agora alcanca o handler.
         val id = UUID.randomUUID()
 
         mockMvc.perform(delete("/api/funcionario/{id}", id))
@@ -94,7 +91,7 @@ class FuncionarioControllerTest {
             matricula = "M123",
             nome = "Marcos Lima",
             email = "marcos@hemonorte.br",
-            senhaHash = "hash",
+            senha = "senha-segura",
             perfil = PerfilFuncionario.TRIAGEM,
         )
         Mockito.`when`(service.cadastrar(corpo)).thenReturn(resposta())
@@ -102,7 +99,7 @@ class FuncionarioControllerTest {
         mockMvc.perform(
             post("/api/funcionario")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"matricula":"M123","nome":"Marcos Lima","email":"marcos@hemonorte.br","senhaHash":"hash","perfil":"TRIAGEM"}""")
+                .content("""{"matricula":"M123","nome":"Marcos Lima","email":"marcos@hemonorte.br","senha":"senha-segura","perfil":"TRIAGEM"}"""),
         )
             .andExpect(status().isCreated)
             .andExpect(jsonPath("$.matricula").value("M123"))
@@ -114,7 +111,7 @@ class FuncionarioControllerTest {
         mockMvc.perform(
             put("/api/funcionario/{id}", UUID.randomUUID())
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"nome":"","email":"marcos@hemonorte.br"}""")
+                .content("""{"nome":"","email":"marcos@hemonorte.br","perfil":"TRIAGEM"}"""),
         )
             .andExpect(status().isBadRequest)
     }

@@ -1,15 +1,18 @@
 package com.hemonorte.model
 
+import com.fasterxml.jackson.annotation.JsonIgnore
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import org.hibernate.annotations.DynamicUpdate
 import java.time.Instant
 import java.time.LocalDate
 import java.util.*
 
 @Entity
 @Table(name = "doador")
+@DynamicUpdate
 class Doador(
     nome: String,
     email: String,
@@ -34,6 +37,7 @@ class Doador(
         protected set
 
     @Column(name = "senha_hash", nullable = false)
+    @JsonIgnore
     var senhaHash: String = validarSenhaHash(senhaHash)
         protected set
 
@@ -69,6 +73,17 @@ class Doador(
         senhaHash = validarSenhaHash(novoHash)
     }
 
+    fun alterarTipagem(novaTipagem: String) {
+        tipagem = validarTipagem(novaTipagem)
+    }
+
+    fun alterarDataNascimento(novaDataNascimento: LocalDate) {
+        dataNascimento = validarDataNascimento(novaDataNascimento)
+    }
+
+    fun alterarGenero(novoGenero: Char) {
+        genero = validarGenero(novoGenero)
+    }
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true

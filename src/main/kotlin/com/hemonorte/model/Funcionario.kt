@@ -1,5 +1,6 @@
 package com.hemonorte.model
 
+import com.fasterxml.jackson.annotation.JsonIgnore
 import com.hemonorte.model.enums.PerfilFuncionario
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
@@ -7,10 +8,12 @@ import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import org.hibernate.annotations.DynamicUpdate
 import java.util.UUID
 
 @Entity
 @Table(name = "funcionario")
+@DynamicUpdate
 class Funcionario(
     matricula: String,
     nome: String,
@@ -35,6 +38,7 @@ class Funcionario(
         protected set
 
     @Column(name = "senha_hash", nullable = false)
+    @JsonIgnore
     var senhaHash: String = validarSenhaHash(senhaHash)
         protected set
 
@@ -63,6 +67,9 @@ class Funcionario(
         senhaHash = validarSenhaHash(novoHash)
     }
 
+    fun alterarPerfil(novoPerfil: PerfilFuncionario) {
+        perfil = novoPerfil
+    }
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true

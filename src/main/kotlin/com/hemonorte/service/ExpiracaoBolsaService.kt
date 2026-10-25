@@ -6,7 +6,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import java.time.Instant
+import java.time.LocalDate
 
 @Service
 class ExpiracaoBolsaService(
@@ -20,9 +20,12 @@ class ExpiracaoBolsaService(
     fun processarExpiracaoBolsas() {
         logger.info("Iniciando rotina de verificação de bolsas vencidas...")
         
-        val agora = Instant.now()
+        val hoje = LocalDate.now()
         // Aqui buscamos as bolsas que estão ativas/disponíveis mas cuja validade já passou
-        val bolsasVencidas = bolsaSangueRepository.findBolsasVencidasParaExpirar(agora)
+        val bolsasVencidas = bolsaSangueRepository.findByDataValidadeBeforeAndStatus(
+            hoje,
+            StatusBolsa.DISPONIVEL,
+        )
 
         for (bolsa in bolsasVencidas) {
             // Realiza a transição para expirada e registra na auditoria

@@ -1,15 +1,13 @@
 package com.hemonorte.repository
 
 import com.hemonorte.model.BolsaSangue
+import com.hemonorte.model.enums.StatusBolsa
 import org.springframework.data.jpa.repository.JpaRepository
-import org.springframework.data.jpa.repository.Query
 import org.springframework.stereotype.Repository
-import java.time.Instant
+import java.time.LocalDate
 import java.util.UUID
 
 @Repository
 interface BolsaSangueRepository : JpaRepository<BolsaSangue, UUID> {
-
-    @Query("SELECT b BolsaSangue b WHERE b.validade < :agora AND b.status = 'DISPONIVEL'")
-    fun findBolsasVencidasParaExpirar(agora: Instant): List<BolsaSangue>
+    fun findByDataValidadeBeforeAndStatus(data: LocalDate, status: StatusBolsa): List<BolsaSangue>
 }

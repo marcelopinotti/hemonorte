@@ -1,0 +1,64 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: hemonorte_db
+    environment:
+      POSTGRES_DB: hemonorte
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - hemonorte_postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - hemonorte-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d hemonorte"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+
+
+  hemonorte:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hemonorte_app
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/hemonorte
+    ports:
+      - "8080:8080"
+    networks:
+      - hemonorte-network
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: hemonorte_prometheus
+    volumes:
+      - ./monitoring/prometheus/prometheus.yaml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    networks:
+      - hemonorte-network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: hemonorte_grafana
+    volumes:
+      - ./monitoring/grafana/provisioning/datasources/datasource.yaml:/etc/grafana/provisioning/datasources/datasource.yaml:ro
+    ports:
+      - "3000:3000"
+    networks:
+      - hemonorte-network
+
+volumes:
+  hemonorte_postgres_data:
+
+networks:
+  hemonorte-network:
+    driver: bridge

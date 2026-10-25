@@ -5,6 +5,10 @@ on:
     branches:
       - develop
       - main
+  push:
+    branches:
+      - develop
+      - main
 
 permissions:
   contents: read
@@ -26,5 +30,25 @@ jobs:
           java-version: '17'
           cache: maven
 
-      - name: Build without tests
-        run: mvn -B -ntp -DskipTests clean package
+      - name: Run full Maven verification
+        run: ./mvnw -B -ntp clean verify
+
+      - name: Publish JUnit reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit-reports
+          path: |
+            target/surefire-reports/*.xml
+            target/surefire-reports/*.txt
+          if-no-files-found: warn
+
+      - name: Publish JaCoCo report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-report
+          path: |
+            target/site/jacoco/
+            target/jacoco.exec
+          if-no-files-found: warn

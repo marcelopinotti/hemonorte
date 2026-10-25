@@ -19,7 +19,8 @@ data class CadastroFuncionarioRequest(
     val email: String,
 
     @field:NotBlank
-    val senhaHash: String,
+    @field:Size(max = 72)
+    val senha: String,
 
     @field:NotNull
     val perfil: PerfilFuncionario,

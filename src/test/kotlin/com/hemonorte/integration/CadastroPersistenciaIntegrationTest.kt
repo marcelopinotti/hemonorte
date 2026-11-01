@@ -5,11 +5,14 @@ import com.hemonorte.dto.DoadorResponse
 import com.hemonorte.dto.FuncionarioResponse
 import com.hemonorte.model.Agendamento
 import com.hemonorte.model.Doador
+import com.hemonorte.model.Funcionario
 import com.hemonorte.model.SlotAgenda
+import com.hemonorte.model.enums.PerfilFuncionario
 import com.hemonorte.repository.AgendamentoRepository
 import com.hemonorte.repository.DoadorRepository
 import com.hemonorte.repository.FuncionarioRepository
 import com.hemonorte.repository.SlotAgendaRepository
+import com.hemonorte.service.JwtService
 import org.flywaydb.core.Flyway
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Tag
@@ -77,6 +80,11 @@ class CadastroPersistenciaIntegrationTest {
     @Autowired
     lateinit var agendamentoRepository: AgendamentoRepository
 
+    @Autowired
+    lateinit var jwtService: JwtService
+
+    lateinit var adminToken: String
+
     @BeforeEach
     fun limparBaseDeTeste() {
         jdbcTemplate.execute(
@@ -86,6 +94,16 @@ class CadastroPersistenciaIntegrationTest {
                 RESTART IDENTITY CASCADE
             """.trimIndent(),
         )
+        val admin = funcionarioRepository.saveAndFlush(
+            Funcionario(
+                matricula = "ADMIN-TESTE",
+                nome = "Admin Teste",
+                email = "admin-teste@exemplo.local",
+                senhaHash = passwordEncoder.encode("Senha-Admin-123")!!,
+                perfil = PerfilFuncionario.ADMIN,
+            ),
+        )
+        adminToken = jwtService.gerarToken(admin.id, "FUNCIONARIO", PerfilFuncionario.ADMIN)
     }
 
     @Test
@@ -169,6 +187,7 @@ class CadastroPersistenciaIntegrationTest {
 
         mockMvc.perform(
             put("/api/doador/{id}", doador.id)
+                .bearer(adminToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
                     """
@@ -187,7 +206,7 @@ class CadastroPersistenciaIntegrationTest {
         assertEquals(hashOriginal, persistido.senhaHash)
         assertTrue(passwordEncoder.matches(senha, persistido.senhaHash))
 
-        mockMvc.perform(get("/api/doador/{id}", doador.id))
+        mockMvc.perform(get("/api/doador/{id}", doador.id).bearer(adminToken))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.id").value(doador.id.toString()))
             .andExpect(jsonPath("$.nome").value("Nome Atualizado"))
@@ -202,6 +221,7 @@ class CadastroPersistenciaIntegrationTest {
 
         mockMvc.perform(
             put("/api/doador/{id}/senha", doador.id)
+                .bearer(adminToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""{"senha":"$senhaNova"}"""),
         ).andExpect(status().isNoContent)
@@ -236,12 +256,14 @@ class CadastroPersistenciaIntegrationTest {
         val primeiro = corpoFuncionario("FUNC-DUP-1", "funcionario-dup@exemplo.local", "Senha-Dup-1")
         mockMvc.perform(
             post("/api/funcionario")
+                .bearer(adminToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(primeiro),
         ).andExpect(status().isCreated)
 
         mockMvc.perform(
             post("/api/funcionario")
+                .bearer(adminToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
                     corpoFuncionario(
@@ -256,6 +278,7 @@ class CadastroPersistenciaIntegrationTest {
 
         mockMvc.perform(
             post("/api/funcionario")
+                .bearer(adminToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
                     corpoFuncionario(
@@ -303,7 +326,7 @@ class CadastroPersistenciaIntegrationTest {
             assertEquals(listOf(201, 409), respostas.sorted())
         }
 
-        assertEquals(2, funcionarioRepository.count())
+        assertEquals(3, funcionarioRepository.count())
     }
 
     @Test
@@ -324,7 +347,7 @@ class CadastroPersistenciaIntegrationTest {
         )
         agendamentoRepository.save(Agendamento(doador = doador, slot = slot))
 
-        mockMvc.perform(delete("/api/doador/{id}", doador.id))
+        mockMvc.perform(delete("/api/doador/{id}", doador.id).bearer(adminToken))
             .andExpect(status().isConflict)
             .andExpect(jsonPath("$.erro").value("Doador possui histórico vinculado"))
 
@@ -340,6 +363,7 @@ class CadastroPersistenciaIntegrationTest {
 
         val resultado = mockMvc.perform(
             post("/api/funcionario")
+                .bearer(adminToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
                     """
@@ -362,6 +386,7 @@ class CadastroPersistenciaIntegrationTest {
 
         mockMvc.perform(
             put("/api/funcionario/{id}", funcionario.id)
+                .bearer(adminToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
                     """
@@ -376,10 +401,10 @@ class CadastroPersistenciaIntegrationTest {
             .andExpect(jsonPath("$.perfil").value("TRIAGEM"))
             .andExpect(jsonPath("$.senhaHash").doesNotExist())
 
-        mockMvc.perform(delete("/api/funcionario/{id}", funcionario.id))
+        mockMvc.perform(delete("/api/funcionario/{id}", funcionario.id).bearer(adminToken))
             .andExpect(status().isNoContent)
 
-        mockMvc.perform(get("/api/funcionario/{id}", funcionario.id))
+        mockMvc.perform(get("/api/funcionario/{id}", funcionario.id).bearer(adminToken))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.ativo").value(false))
             .andExpect(jsonPath("$.senhaHash").doesNotExist())
@@ -444,11 +469,11 @@ class CadastroPersistenciaIntegrationTest {
 
     @Test
     fun `recurso inexistente devolve 404 no contrato HTTP real`() {
-        mockMvc.perform(get("/api/doador/{id}", UUID.randomUUID()))
+        mockMvc.perform(get("/api/doador/{id}", UUID.randomUUID()).bearer(adminToken))
             .andExpect(status().isNotFound)
             .andExpect(jsonPath("$.erro").value("Doador não encontrado"))
 
-        mockMvc.perform(get("/api/funcionario/{id}", UUID.randomUUID()))
+        mockMvc.perform(get("/api/funcionario/{id}", UUID.randomUUID()).bearer(adminToken))
             .andExpect(status().isNotFound)
             .andExpect(jsonPath("$.erro").value("Funcionário não encontrado"))
     }
@@ -517,6 +542,7 @@ class CadastroPersistenciaIntegrationTest {
                     largada.await(10, TimeUnit.SECONDS)
                     mockMvc.perform(
                         post("/api/funcionario")
+                            .bearer(adminToken)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(corpo),
                     ).andReturn().response.status
@@ -546,6 +572,9 @@ class CadastroPersistenciaIntegrationTest {
             nome,
             tabela,
         ) ?: false
+
+    private fun org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder.bearer(token: String) =
+        header("Authorization", "Bearer $token")
 
     private data class Par(
         val cpfPrimeiro: String,

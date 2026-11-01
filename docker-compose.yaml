@@ -31,6 +31,8 @@ services:
         condition: service_healthy
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/hemonorte
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET deve ser definido com pelo menos 64 bytes}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-86400000}
     ports:
       - "8080:8080"
     networks:

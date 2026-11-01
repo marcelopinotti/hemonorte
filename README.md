@@ -28,6 +28,48 @@ Para subir a aplicação e o PostgreSQL com Docker Compose:
 docker compose up --build
 ```
 
+Defina um segredo próprio fora do repositório antes de uso fora do ambiente local:
+
+```powershell
+$jwtBytes = New-Object byte[] 64
+[System.Security.Cryptography.RandomNumberGenerator]::Fill($jwtBytes)
+$env:JWT_SECRET = [Convert]::ToBase64String($jwtBytes)
+$env:JWT_EXPIRATION = "86400000"
+docker compose up --build
+```
+
+`JWT_EXPIRATION` usa milissegundos. O valor padrão é 24 horas. Na primeira inicialização sem funcionário `ADMIN`, a aplicação cria matrícula `admin` com senha aleatória e mostra essa senha uma vez no log. Troque a senha após entrar.
+
+## Autenticação JWT
+
+Login de funcionário:
+
+```http
+POST /auth/login/funcionario
+Content-Type: application/json
+
+{"matricula":"admin","senha":"senha-exibida-no-log"}
+```
+
+Login de doador:
+
+```http
+POST /auth/login/doador
+Content-Type: application/json
+
+{"cpf":"12345678901","senha":"sua-senha"}
+```
+
+Envie o token retornado em todas as rotas protegidas:
+
+```http
+Authorization: Bearer eyJ...
+```
+
+O JWT contém `sub`, `tipo`, `perfil` para funcionários, `iat`, `exp` e `iss`. Doadores usam `/api/doador/me`; a API ignora IDs externos para operações próprias. Funcionários seguem perfis `TRIAGEM`, `COLETA`, `LABORATORIO` e `ADMIN`. Token de funcionário desativado retorna 401 mesmo antes da expiração.
+
+O esquema OpenAPI também é protegido. Consulte com `Authorization: Bearer {token}` em `/v3/api-docs`.
+
 A API fica disponível em `http://localhost:8080` e o PostgreSQL em `localhost:5433`. Para parar os serviços:
 
 ```powershell

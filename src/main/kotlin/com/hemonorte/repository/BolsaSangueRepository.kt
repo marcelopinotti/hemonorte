@@ -10,4 +10,5 @@ import java.util.UUID
 @Repository
 interface BolsaSangueRepository : JpaRepository<BolsaSangue, UUID> {
     fun findByDataValidadeBeforeAndStatus(data: LocalDate, status: StatusBolsa): List<BolsaSangue>
+    fun findByStatus(status: StatusBolsa): List<BolsaSangue>
 }

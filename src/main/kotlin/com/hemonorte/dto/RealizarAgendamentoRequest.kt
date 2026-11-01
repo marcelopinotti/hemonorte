@@ -4,8 +4,7 @@ import jakarta.validation.constraints.NotNull
 import java.util.UUID
 
 data class RealizarAgendamentoRequest(
-    @field:NotNull
-    val doadorId: UUID,
+    val doadorId: UUID? = null,
 
     @field:NotNull
     val slotId: UUID,

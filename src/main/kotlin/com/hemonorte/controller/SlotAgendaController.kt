@@ -7,6 +7,7 @@ import jakarta.validation.Valid
 import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.web.bind.annotation.*
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -18,6 +19,7 @@ class SlotAgendaController(
 ) {
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('TRIAGEM', 'ADMIN')")
     fun criarSlot(@RequestBody @Valid request: CriarSlotRequest): ResponseEntity<SlotAgenda> {
         val slot = slotAgendaService.criarSlot(request.inicio, request.capacidade)
         return ResponseEntity.status(HttpStatus.CREATED).body(slot)
@@ -34,4 +36,18 @@ class SlotAgendaController(
         val slots = slotAgendaService.listarPorPeriodo(instantInicio, instantFim)
         return ResponseEntity.ok(slots)
     }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('TRIAGEM', 'ADMIN')")
+    fun atualizarSlot(
+        @PathVariable id: java.util.UUID,
+        @RequestBody @Valid request: CriarSlotRequest,
+    ): ResponseEntity<SlotAgenda> = ResponseEntity.ok(
+        slotAgendaService.atualizar(id, request.inicio, request.capacidade),
+    )
+
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("hasAnyRole('TRIAGEM', 'ADMIN')")
+    fun excluirSlot(@PathVariable id: java.util.UUID) = slotAgendaService.excluir(id)
 }

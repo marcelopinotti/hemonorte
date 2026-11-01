@@ -1,6 +1,7 @@
 package com.hemonorte.controller
 
 import com.hemonorte.exception.ConflitoException
+import com.hemonorte.exception.AutenticacaoException
 import com.hemonorte.exception.RegraNegocioException
 import jakarta.validation.ConstraintViolationException
 import org.springframework.dao.DataIntegrityViolationException
@@ -15,6 +16,10 @@ data class ApiError(val erro: String)
 
 @RestControllerAdvice
 class ApiExceptionHandler {
+
+    @ExceptionHandler(AutenticacaoException::class)
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    fun naoAutenticado(exception: AutenticacaoException) = ApiError(exception.message ?: "Credenciais inválidas")
 
     @ExceptionHandler(NoSuchElementException::class)
     @ResponseStatus(HttpStatus.NOT_FOUND)

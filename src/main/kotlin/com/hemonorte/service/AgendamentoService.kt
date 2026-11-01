@@ -8,6 +8,9 @@ import com.hemonorte.repository.SlotAgendaRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.util.UUID
+import com.hemonorte.dto.AgendamentoResponse
+import com.hemonorte.dto.toResponse
+import org.springframework.security.access.AccessDeniedException
 
 @Service
 class AgendamentoService(
@@ -43,6 +46,10 @@ class AgendamentoService(
     }
 
     @Transactional
+    fun realizarAgendamentoResponse(doadorId: UUID, slotId: UUID): AgendamentoResponse =
+        realizarAgendamento(doadorId, slotId).toResponse()
+
+    @Transactional
     fun cancelarAgendamento(agendamentoId: UUID): Agendamento {
         val agendamento = agendamentoRepository.findById(agendamentoId)
             .orElseThrow { IllegalArgumentException("Agendamento não encontrado") }
@@ -50,6 +57,50 @@ class AgendamentoService(
         agendamento.cancelar()
         return agendamentoRepository.save(agendamento)
     }
+
+    @Transactional
+    fun cancelarAgendamentoDoDoador(agendamentoId: UUID, doadorId: UUID): Agendamento {
+        val agendamento = agendamentoRepository.findByIdAndDoadorId(agendamentoId, doadorId)
+            .orElseThrow { AccessDeniedException("Acesso negado") }
+        agendamento.cancelar()
+        return agendamentoRepository.save(agendamento)
+    }
+
+    @Transactional(readOnly = true)
+    fun listar(): List<Agendamento> = agendamentoRepository.findAll()
+
+    @Transactional(readOnly = true)
+    fun listarPorDoador(doadorId: UUID): List<Agendamento> = agendamentoRepository.findByDoadorId(doadorId)
+
+    @Transactional(readOnly = true)
+    fun buscar(id: UUID): Agendamento = agendamentoRepository.findById(id)
+        .orElseThrow { NoSuchElementException("Agendamento não encontrado") }
+
+    @Transactional
+    fun cancelarAgendamentoResponse(id: UUID): AgendamentoResponse = cancelarAgendamento(id).toResponse()
+
+    @Transactional
+    fun cancelarAgendamentoDoDoadorResponse(id: UUID, doadorId: UUID): AgendamentoResponse =
+        cancelarAgendamentoDoDoador(id, doadorId).toResponse()
+
+    @Transactional
+    fun registrarFaltaResponse(id: UUID): AgendamentoResponse = registrarFalta(id).toResponse()
+
+    @Transactional(readOnly = true)
+    fun listarResponses(): List<AgendamentoResponse> = agendamentoRepository.findAll().map { it.toResponse() }
+
+    @Transactional(readOnly = true)
+    fun listarPorDoadorResponses(doadorId: UUID): List<AgendamentoResponse> =
+        agendamentoRepository.findByDoadorId(doadorId).map { it.toResponse() }
+
+    @Transactional(readOnly = true)
+    fun buscarResponse(id: UUID): AgendamentoResponse = buscar(id).toResponse()
+
+    @Transactional(readOnly = true)
+    fun buscarResponseDoDoador(id: UUID, doadorId: UUID): AgendamentoResponse =
+        agendamentoRepository.findByIdAndDoadorId(id, doadorId)
+            .orElseThrow { AccessDeniedException("Acesso negado") }
+            .toResponse()
 
     @Transactional
     fun registrarFalta(agendamentoId: UUID): Agendamento {

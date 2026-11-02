@@ -1,3 +1,4 @@
+
 package com.hemonorte.controller
 
 import com.hemonorte.dto.CriarSlotRequest
@@ -18,7 +19,6 @@ import java.time.ZoneId
 class SlotAgendaController(
     private val slotAgendaService: SlotAgendaService
 ) {
-
     @PostMapping
     @PreAuthorize("hasAnyRole('TRIAGEM', 'ADMIN')")
     fun criarSlot(@RequestBody @Valid request: CriarSlotRequest): ResponseEntity<SlotAgenda> {

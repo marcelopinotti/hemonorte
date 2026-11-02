@@ -20,6 +20,5 @@ data class RealizarTriagemRequest(
     @field:NotNull
     val teveFebre: Boolean,
 
-    @field:NotNull
-    val funcionarioId: UUID,
+    val funcionarioId: UUID? = null,
 )

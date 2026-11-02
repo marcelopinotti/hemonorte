@@ -15,7 +15,7 @@ class CadastroDoadorRequestValidationTest {
         nome: String = "Ana Souza",
         email: String = "ana@email.com",
         cpf: String = "12345678901",
-        senhaHash: String = "hash",
+        senha: String = "senha-secreta",
         tipagem: String = "O+",
         dataNascimento: LocalDate = LocalDate.now().minusYears(30),
         genero: String = "F",
@@ -23,7 +23,7 @@ class CadastroDoadorRequestValidationTest {
         nome = nome,
         email = email,
         cpf = cpf,
-        senhaHash = senhaHash,
+        senha = senha,
         tipagem = tipagem,
         dataNascimento = dataNascimento,
         genero = genero,
@@ -69,10 +69,10 @@ class CadastroDoadorRequestValidationTest {
     }
 
     @Test
-    fun `senhaHash em branco gera violacao em senhaHash`() {
+    fun `senha em branco gera violacao em senha`() {
         assertTrue(
-            validator.validate(request(senhaHash = "")).any { it.propertyPath.toString() == "senhaHash" },
-            "esperava violacao em 'senhaHash'",
+            validator.validate(request(senha = "")).any { it.propertyPath.toString() == "senha" },
+            "esperava violacao em 'senha'",
         )
     }
 

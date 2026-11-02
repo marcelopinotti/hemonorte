@@ -8,8 +8,7 @@ data class RegistrarExameRequest(
     @field:NotNull
     val bolsaId: UUID,
 
-    @field:NotNull
-    val funcionarioId: UUID,
+    val funcionarioId: UUID? = null,
 
     @field:NotNull
     val hiv: ResultadoSorologico,

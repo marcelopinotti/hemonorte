@@ -1,11 +1,15 @@
 package com.hemonorte.controller
 
 import com.hemonorte.dto.RealizarTriagemRequest
-import com.hemonorte.model.Triagem
+import com.hemonorte.dto.TriagemResponse
+import com.hemonorte.dto.toResponse
 import com.hemonorte.service.TriagemService
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.security.access.prepost.PreAuthorize
+import org.springframework.security.core.Authentication
+import com.hemonorte.security.funcionarioAutenticado
 import org.springframework.web.bind.annotation.*
 import java.util.UUID
 
@@ -16,21 +20,28 @@ class TriagemController(
 ) {
 
     @PostMapping
-    fun realizarTriagem(@RequestBody @Valid request: RealizarTriagemRequest): ResponseEntity<Triagem> {
+    @PreAuthorize("hasAnyRole('TRIAGEM', 'ADMIN')")
+    fun realizarTriagem(
+        @RequestBody @Valid request: RealizarTriagemRequest, authentication: Authentication,): ResponseEntity<TriagemResponse> {
         val triagem = triagemService.realizarTriagem(
             agendamentoId = request.agendamentoId,
             peso = request.peso,
             tatuagemRecente = request.tatuagemRecente,
             cirurgiaRecente = request.cirurgiaRecente,
             teveFebre = request.teveFebre,
-            funcionarioId = request.funcionarioId
+            funcionarioId = authentication.funcionarioAutenticado().id
         )
-        return ResponseEntity.status(HttpStatus.CREATED).body(triagem)
+        return ResponseEntity.status(HttpStatus.CREATED).body(triagem.toResponse())
     }
 
     @GetMapping("/agendamento/{agendamentoId}")
-    fun buscarPorAgendamento(@PathVariable agendamentoId: UUID): ResponseEntity<Triagem> {
+    @PreAuthorize("hasAnyRole('TRIAGEM', 'COLETA', 'ADMIN')")
+    fun buscarPorAgendamento(@PathVariable agendamentoId: UUID): ResponseEntity<TriagemResponse> {
         val triagem = triagemService.buscarPorAgendamento(agendamentoId)
-        return ResponseEntity.ok(triagem)
+        return ResponseEntity.ok(triagem.toResponse())
     }
+
+    @GetMapping
+    @PreAuthorize("hasAnyRole('TRIAGEM', 'COLETA', 'ADMIN')")
+    fun listar(): List<TriagemResponse> = triagemService.listar().map { it.toResponse() }
 }

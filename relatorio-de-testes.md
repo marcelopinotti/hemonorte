@@ -1,197 +1,202 @@
 # Relatório de QA — Hemonorte
 
-Atualização de 2026-10-19, sobre a `develop` @ b8ed3da (sincronizada com o remoto por fast-forward): os developers entregaram as features das issues #6 e #8–#14, o fix do nosso QA-024 veio por agente automatizado e o dono do repo subiu docs e um CI (PR #25). Documento vivo — o que foi corrigido e verificado sai da lista; defeitos novos entram com os próximos IDs.
+Atualização de 2026-10-30, sobre a `develop` @ `75bfcd4` (18 commits de desenvolvimento posteriores ao PR #30) e a nova leva da branch `QA`. Documento vivo: defeitos corrigidos e verificados em execução saem da lista ativa; regressões mantêm o ID original; achados novos recebem o próximo ID estável.
 
 ## 1. Resumo executivo
 
-A develop andou 19 commits desde o nosso último "QA commit" e virou outro sistema: agenda com capacidade, triagem, coleta, sorologia, estoque e expiração diária existem em código, com services, controllers e DTOs próprios. Três achados saem da lista por correção verificada em execução: QA-024 (o crítico do `@Pattern` sobre Char — `genero` virou String e os 7 testes de Bean Validation ficaram verdes), QA-025 (PUT e DELETE por id voltaram ao mapa — as sentinelas do 405 foram convertidas nas provas do contrato, PUT 200 e DELETE 204, critério literal da issue #15) e QA-020 (as entidades têm repository; a única exceção é a HistoricoAuditoria, que é a pendência do próprio QA-003). QA-002 também sai: a capacidade é conferida no AgendamentoService — o resíduo de concorrência vira o novo QA-037.
+A rodada cumpriu o objetivo de validar a base de persistência e os cadastros com PostgreSQL real. A suíte saiu de **120 para 135 testes**, todos verdes no `clean verify` final: **+15 provas**, das quais 14 usam Testcontainers/PostgreSQL 16 e uma é uma sentinela de contrato HTTP.
 
-O código novo trouxe nove achados, dois graves. O mais grave é de uma linha: a query de expiração veio com JPQL malformada (sem `FROM`) e o Spring Data derruba o boot — a aplicação não sobe de jeito nenhum (QA-035); o CI deles não pega porque compila sem testes. A tentativa de corrigir o QA-026 calcula o BCrypt e joga fora: `senhaCriptografada` nunca é usada e o valor cru do cliente segue persistido (QA-034). Completam a onda: estoque crítico que é um stub retornando zero (QA-036), reserva de capacidade conta-então-insere que admite corrida (QA-037), fluxo de doação que para na coleta sem bolsa nem comprovante (QA-039), sorologia que não aplica o resultado à bolsa (QA-040), CI que não roda testes (QA-038), `volumeMl` negativo aceito (QA-041) e política de exclusão divergente entre doador e funcionário (QA-042).
+As novas evidências cobrem:
 
-A suíte desta execução: 90 testes, 89 verdes e 1 vermelho — o contextLoads, que segue sem Docker nesta sessão e, quando rodar no seu terminal, vai trombar no QA-035 antes de qualquer coisa. Cobertura medida: 31,7% das linhas — o numerador cresceu (234→240 linhas cobertas), mas entraram 289 linhas novas sem teste direto; o pacote service, agora o maior, está em zero.
+- Flyway V1→V2 em banco real, banco vazio, schema validado pelo Hibernate e preservação de registros existentes;
+- criação, consulta, atualização e desativação de doadores/funcionários, recurso inexistente e preservação de vínculo histórico;
+- CPF imutável, nascimento futuro, duplicidade sequencial e corrida real de CPF, e-mail e matrícula;
+- BCrypt real no servidor, salts distintos, troca de senha, atualização cadastral sem reenvio de senha e ausência de hash nas respostas;
+- contratos HTTP 201/204/400/404/409 no fluxo real e três defeitos vivos preservados como sentinelas.
+
+O baseline de `75bfcd4` também passou no CI remoto (`clean verify`, run `40220462421`), confirmando que as correções dos developers não quebraram a suíte existente.
+
+A auditoria dos 18 commits encontrou três riscos que exigem decisão rápida: as novas rotas de troca de senha e alteração de perfil permanecem sem autenticação/autorização (regressão do **QA-001**), e o handler de regra de negócio ainda pode serializar erro com HTTP 200 (família do **QA-044**). O novo **QA-045** registra que uma violação de limite dimensional no banco é convertida em falso conflito 409.
 
 ## 2. Inventário técnico
 
 | Item | Valor |
 |---|---|
-| Linguagem | Kotlin 2.3.21 (`pom.xml:31`) |
-| Java | alvo 17 no pom (era 21; baixado nesta onda e casando com o CI) — executado com Temurin 21.0.12.1 |
-| Framework | Spring Boot 4.1.1 (`pom.xml:7`) |
-| Build | Maven 3.9.16 via wrapper 3.3.4 (only-script) |
-| Web | `spring-boot-starter-webmvc`, Jackson 3 Kotlin, Actuator |
-| Persistência | Data JPA, Flyway + `flyway-database-postgresql`, driver PostgreSQL |
-| Validação | `spring-boot-starter-validation` (Hibernate Validator) |
-| Segurança | `spring-security-crypto` entrou no pom (BCrypt instanciado — e descartado, QA-034); sem auth |
-| Testes | starters `-test`, `spring-boot-testcontainers`, Testcontainers 2.0.5 |
-| Motor de teste | JUnit Jupiter 6.0.3, Mockito 5.23.0, Surefire 3.5.6 |
+| Linguagem | Kotlin 2.3.21 |
+| Java | alvo 17 no projeto; execução com Temurin 21.0.12.1 |
+| Framework | Spring Boot 4.1.1 |
+| Build | Maven 3.9.16 via wrapper 3.3.4 |
+| Testes | JUnit Jupiter 6.0.3, kotlin.test, Mockito 5.23.0, MockMvc standalone + MockMvc com contexto real |
+| Banco de integração | PostgreSQL 16 Alpine via Testcontainers |
+| Migrações | Flyway V1→V2; JPA com `ddl-auto: validate` |
 | Cobertura | JaCoCo 0.8.15 |
-| CI | GitHub Actions: `mvn -B -ntp -DskipTests clean package`, só em PR — QA-038 |
-| Banco | PostgreSQL `localhost:5432/hemonorte`; usuário e senha `postgres` fixos no arquivo |
-| JPA | `open-in-view: false`; `ddl-auto: validate`; timezone JDBC UTC; `show_sql: true` |
-| Docs | README e modelagem versionados em `docs/` (QA-015 resolvido) |
-| Commits | Conventional Commits (`.gitmessage`); os de QA seguem a mensagem combinada |
+| CI | GitHub Actions executa `./mvnw -B -ntp clean verify` e publica JUnit/JaCoCo |
+| Branch de trabalho | `QA`, base `develop` @ `75bfcd4` |
 
-## 3. Repositório e branches
+## 3. Método e condições de execução
 
-Develop sincronizada por fast-forward: 996681d → b8ed3da, 19 commits — 11 `feat` de Esdras Daniel (issues #6 e #8–#14), docs + CODEOWNERS + CI de Marcelo Pinotti (PR #25), o fix do QA-024 por copilot-swe-agent e o merge da main. A main andou até 861329a (PR #4, develop→main) e já contém os nossos dois "QA commit" anteriores via PR #3 — segue intocada por este trabalho. Na árvore, aguardando os commits desta rodada: a conversão das sentinelas do FuncionarioControllerTest e este relatório.
+1. A branch existente `QA` foi alinhada à `develop` atual, sem criar branch nova e sem reescrever histórico.
+2. Os 18 commits de desenvolvimento foram lidos antes da alteração de testes.
+3. O baseline remoto de `75bfcd4` foi confirmado como verde.
+4. Na máquina local, o build completo foi executado em runner Linux com Maven 3.9.16, Temurin 21.0.12.1, Docker/WSL e PostgreSQL via Testcontainers. O agente do Mockito foi pré-carregado no runner para contornar a restrição de self-attach do contêiner; nenhuma configuração do projeto foi alterada por isso.
+5. O comando final foi `./mvnw -B -ntp clean verify`, com JaCoCo limpo e PostgreSQL 16 real.
+6. Nenhum teste foi ignorado, desativado ou reenquadrado para produzir verde.
 
-## 4. Arquitetura
+## 4. Nova leva de testes
 
-```
-com.hemonorte
-├── HemonorteApplication.kt   +@EnableScheduling (o cron da #14 exige)
-├── controller/  Doador, Funcionario, Agendamento, Aptidao, SlotAgenda,
-│                Triagem, Coleta, ExameSorologico, Estoque, Hello
-├── service/     Doador, Funcionario, Agendamento, Aptidao, SlotAgenda,
-│                Triagem, Coleta, ExameSorologico, Estoque, ExpiracaoBolsa
-├── repository/  9 interfaces — falta só HistoricoAuditoria (QA-003)
-├── dto/         requests/responses das features novas + os de cadastro
-└── model/       10 entidades (Coleta é nova) + 5 enums
-```
+| Classe | Testes | Evidência |
+|---|---:|---|
+| `CadastroPersistenciaIntegrationTest` | 13 | migrações, JPA/constraint, CRUD, hash/salt, senha, concorrência de unicidade, vínculos históricos, desativação, 400/404/409 e sentinela dimensional |
+| `AutorizacaoCadastroIntegrationTest` | 1 | sentinela executável do QA-001: sem credencial, troca de senha e autoelevação para ADMIN são aceitas |
+| `ApiExceptionHandlerTest` | 1 | sentinela executável do QA-044: `RegraNegocioException` responde 200 |
+| **Total novo** | **15** | **15 verdes** |
 
-O desenho em camadas se mantém. Três observações: a AptidaoService decide intervalo entre doações por sexo (60/90 dias, `AptidaoService.kt:16-34`) — regra clínica codificada como "exemplo padrão", pedindo chancela formal; a expiração é `@Scheduled(cron = "0 0 2 * * *")` com `@Transactional` e logger, horário batendo com a spec do M2 — mas o comentário diz "meia-noite" (mentira de duas horas); e a regra de triagem apta aparece duas vezes (no `init` de Coleta e no ColetaService) — coerentes entre si, duplicação a observar.
+### 4.1 Migração e integridade do schema
 
-## 5. A suíte de testes
+- O contexto real sobe com Flyway e Hibernate em modo `validate`.
+- As versões V1 e V2 aparecem como aplicadas e bem-sucedidas.
+- Um schema isolado é migrado até V1, recebe um doador e é migrado até V2; o registro permanece e a constraint de nascimento futuro fica validada.
+- A constraint de banco rejeita nascimento futuro mesmo quando a validação HTTP é contornada.
 
-12 classes, 90 testes, todas `@Tag("unit")` exceto o smoke:
+### 4.2 Cadastros e senhas
 
-- Model, 75 verdes: TriagemTest (9), BolsaSangueTest (14), DoadorTest (16), FuncionarioTest (11), AgendamentoTest (8), EstoqueMinimoTest (6), ExameSorologicoTest (6), SlotAgendaTest (5).
-- DTO, 7 verdes: CadastroDoadorRequestValidationTest — os testes que eram a evidência do QA-024 agora provam o contrato corrigido (`genero` String com `[MF]`).
-- Controller, 7 verdes com MockMvc standalone e serviços mockados: DoadorControllerTest (3 — listagem; 200 sem expor `senhaHash`, a regressão do QA-008; 404 com corpo do handler); FuncionarioControllerTest (4 — **as duas sentinelas do 405 viraram as provas do contrato: PUT por id devolve 200 com o corpo atualizado e DELETE por id devolve 204 com `verify` no service**, critério literal da #15). Nota técnica da conversão: o stubbing usa argumentos concretos — o DTO é data class e a igualdade por valor casa com a instância que o controller desserializa; matchers `eq()`/`any()` em Kotlin devolvem null placeholder e NPE no parâmetro não-nulo.
-- Integração, 1 não executado daqui: o contextLoads exige o container PostgreSQL; o Docker segue inalcançável desta sessão.
+- O doador e o funcionário são persistidos com BCrypt real; o valor recebido em `senha` nunca é gravado.
+- Duas senhas iguais geram hashes diferentes, comprovando salt por cadastro.
+- Atualizar cadastro não exige reenvio de senha e preserva CPF e hash.
+- Trocar senha gera novo hash; a senha anterior deixa de validar.
+- DELETE de funcionário desativa e preserva a linha; DELETE de doador com agendamento devolve 409 e preserva doador e histórico.
+- Respostas de cadastro, consulta, atualização e agendamento não contêm senha nem hash.
 
-## 6. Achados
+### 4.3 Unicidade e concorrência
 
-Saem da lista, resolvidos e verificados em execução: QA-024 (genero String; suíte Bean Validation verde), QA-025 (PUT/DELETE no mapa; provas 200/204), QA-002 (capacidade conferida no AgendamentoService; resíduo de concorrência vira QA-037), QA-015 (docs da modelagem versionadas em `docs/`) e QA-020 (toda entidade tem repository, exceto HistoricoAuditoria — que é o próprio QA-003, não uma dívida nova).
+Foram executadas requisições HTTP simultâneas, com largada sincronizada por barreira e sem `sleep`:
 
-### QA-035 (crítico) — a aplicação não sobe: JPQL malformada no repositório de bolsas
-
-`BolsaSangueRepository.findBolsasVencidasParaExpirar` (`repository/BolsaSangueRepository.kt:13`) veio com `@Query("SELECT b BolsaSangue b WHERE ...")` — faltou o `FROM`. O Spring Data valida a query na criação do bean e o contexto morre no boot: qualquer execução com banco real (o contextLoads no seu terminal; um CI que rodasse testes) falha antes de validar Flyway ou JPA. Achado binário: não existe deploy enquanto isso estiver lá. Correção numa linha: `SELECT b FROM BolsaSangue b WHERE ...`.
-
-### QA-001 (crítico) — API de dados sem segurança
-
-Inalterado e mais urgente a cada feature: agora existem endpoints de triagem (peso, impedimentos clínicos), coleta, sorologia (HIV, hepatite, Chagas) e estoque — tudo aberto, sem autenticação nem autorização, com Swagger público. A issue #7 (JWT, marco M1) espera; a #16 (testes de auth) depende dela.
-
-### QA-034 (alto) — o BCrypt é calculado e descartado; o hash cru do cliente segue indo pro banco
-
-A tentativa de correção do QA-026 adicionou `spring-security-crypto` ao pom e instanciou o encoder — mas `val senhaCriptografada = passwordEncoder.encode(request.senhaHash)` (`service/FuncionarioService.kt:25`) nunca é usado: a entidade é criada com `senhaHash = request.senhaHash` (`FuncionarioService.kt:31`), o valor cru. O QA-026 segue aberto com nova evidência, e piorou de figura: agora existe a ilusão de correção. Correção numa linha: usar a variável no construtor.
-
-### QA-037 (alto) — a capacidade do slot admite corrida e dois buracos de contrato
-
-`AgendamentoService.realizarAgendamento` confere capacidade contando os PENDentes e inserindo (`service/AgendamentoService.kt:35-36`) — duas requisições simultâneas pela última vaga passam juntas pela checagem e a capacidade estoura; a issue #9 pedia proteção "em transação e no banco", e o `@Version` de agendamentos distintos não protege a capacidade compartilhada. Faltam também: impedir reserva ativa duplicada do mesmo doador no mesmo slot (nada checa) e reserva em horário passado (nem `SlotAgendaService.criarSlot` nem o agendamento comparam `inicio` com agora).
-
-### QA-036 (alto) — estoque crítico é um stub que sempre reporta zero
-
-`EstoqueService.calcularBolsasAprovadasPorTipagem` (`service/EstoqueService.kt:39`) retorna 0 com um `// Ajustaremos`. Efeito: `listarEstoquesCriticos` compara 0 <= quantidadeCritica e devolve TODAS as tipagens como críticas, sempre. A issue #13 está referenciada como implementada no commit, mas o coração operacional não existe — pior que ausente: enganoso para quem operar por esse endpoint.
-
-### QA-039 (alto) — o fluxo de doação para na coleta: sem bolsa, sem comprovante, sem auditoria
-
-`ColetaService.registrarColeta` valida triagem apta e duplicidade e salva a Coleta. A issue #11 exige criar a bolsa em `EM_ANALISE`, concluir o agendamento e gerar `codigoComprovante` na MESMA transação, integrando HistoricoAuditoria — nada disso existe. Efeito em cadeia: a AptidaoService só considera agendamentos `CONCLUIDO`, que nada no sistema produz; a regra de intervalo 60/90 dias é inerte na prática.
-
-### QA-040 (alto) — a sorologia registra o exame e não aplica o resultado à bolsa
-
-`ExameSorologicoService.registrarExame` não checa o status da bolsa (a #12 exige `EM_ANALISE` para liberar/descartar) e não transiciona nada — nem `DISPONIVEL` nem `DESCARTADA`. Combinado com o QA-039 (nenhuma bolsa nasce do fluxo), o exame só existiria com dado plantado à mão.
-
-### Médios
-
-QA-026/QA-032 — atualizados: o FuncionarioService ganhou um encoder inútil (QA-034) e o `AtualizacaoFuncionarioRequest` perdeu o campo de senha (evolução boa); o doador segue exigindo `senhaHash` no update e sem hashing no DoadorService (`service/DoadorService.kt:41-47`).
-
-QA-003 — a auditoria continua sem emissor, agora com agravante: o ExpiracaoBolsaService transiciona bolsas com um comentário dizendo que "registra na auditoria" e não grava nada; a HistoricoAuditoria segue como a única entidade sem repository.
-
-QA-010 — a expiração só pega bolsas `DISPONIVEL` (a condição de status está na mesma query do QA-035); `EM_ANALISE→VENCIDA` segue decisão clínica aberta.
-
-QA-027/QA-028 — contratos de erro inalterados.
-
-QA-038 (novo) — o CI compila sem testes (`mvn -B -ntp -DskipTests clean package`, `.github/workflows/ci.yaml:30`) e só roda em `pull_request` (develop/main): push direto na develop não dispara nada, e nem JUnit nem JaCoCo são publicados — a issue #15 prevê publicar. Enquanto isso, defeitos como o QA-035 passam batido pelo CI.
-
-QA-041 (novo) — `volumeMl` aceita negativo: só `@NotNull` no DTO (`dto/RegistrarColetaRequest.kt:14-15`) e nenhum `require` no modelo.
-
-QA-014 — cresceu: além dos relógios da entidade, `Coleta.dataHora` usa `LocalDateTime.now()` (sem fuso) e a Aptidao converte `Instant` com `ZoneId.systemDefault()` — a issue #21 do Dev nasce daqui.
-
-QA-029 — senha do banco segue hardcoded.
-
-QA-016/QA-006/QA-007 — inalterados (decisões clínicas/produto).
-
-### Baixos
-
-QA-011 — `postgres:latest` no Testcontainers.
-
-QA-012/QA-017 — `show_sql` e ausência de loggers (a #23 do Dev cobre); nota positiva: ExpiracaoBolsaService loga início, fim e total.
-
-QA-031 — a V2 segue; o alvo Java caiu pra 17, sem impacto no achado.
-
-QA-033 — FuncionarioService segue sem `@Transactional` e listagens sem paginação (a #20 cobre a paginação).
-
-QA-042 (novo) — excluir doador é hard delete (`doadorRepository.delete`); excluir funcionário virou soft delete (`desativar`). Doador com vínculos explode em 409 com a mensagem fixa do handler; políticas de retenção divergentes merecem unificação.
-
-## 7. Estado real da matriz de testes
-
-| Bloco | Resultado desta execução |
+| Cenário | Resultado observado |
 |---|---|
-| Regras de domínio (8 classes) | 75 verdes |
-| Bean Validation do cadastro de doador | 7 verdes — prova do QA-024 corrigido |
-| API standalone (Doador e Funcionario) | 7 verdes — incl. provas PUT 200 / DELETE 204 do QA-025 |
-| Integração (contextLoads: Flyway V1→V2 + validate) | não executado nesta sessão; com Docker, revela o QA-035 |
+| Mesmo CPF, e-mails diferentes | exatamente 201 + 409; uma linha persistida |
+| CPF diferentes, mesmo e-mail | exatamente 201 + 409; uma linha persistida |
+| Mesma matrícula, e-mails diferentes | exatamente 201 + 409; uma linha persistida |
+| Matrículas diferentes, mesmo e-mail | exatamente 201 + 409; uma linha persistida |
 
-Na fila, agora com roteiro oficial: as issues #15–#19 do Dev (marco M3) definem os testes por feature. A #15 pede Flyway em banco real, CPF imutável, corrida de duplicidade com 409 e a conversão das sentinelas (feito nesta rodada); a #17 pede a corrida da última vaga; a #18, rollback e comprovante; a #19, sorologia, estoque e expiração. O M3 manda reutilizar esta suíte e explicitamente não aceita teste ignorado como evidência.
+A constraint `UNIQUE` do PostgreSQL é a última linha de defesa; a implementação atual combina pré-checagem e captura de `DataIntegrityViolationException`.
 
-## 8. JaCoCo
+## 5. Achados corrigidos e verificados nesta rodada
 
-Números desta execução: 31,7% das linhas (240 de 757) e 38,4% das instruções. Pacote a pacote: model 55,8% de linhas, 63,1% de instruções e 70,1% de branches; enums 100%; dto 29,4%; controller 13,3%; service 0 de 203 linhas. A queda contra os 50% da última medição tem leitura simples: cobrimos MAIS linhas (234→240), mas entraram 289 linhas novas sem teste nenhum — 11 services e 7 controllers novos. As entidades sem teste puxam o model para baixo: Coleta 0/23 e HistoricoAuditoria 0/17 (60,3% → 55,8%). Quando os testes de service do M3 existirem esses números saltam; por ora, cobertura segue sendo termômetro do domínio, não da camada nova.
+Saem da lista de defeitos ativos:
 
-## 9. Automação via Maven
+- **QA-026/QA-032 — hash sob responsabilidade do cliente e atualização que exigia reenvio de senha:** obsoletos para novas gravações; o hash passou para o servidor e a atualização cadastral funciona sem reenvio de senha, conforme a #15.
+- **QA-034 — BCrypt calculado e descartado:** corrigido para doadores e funcionários; a nova integração prova hash real, salt distinto, troca de senha e ausência do valor bruto.
+- **QA-035 — JPQL malformada na expiração:** corrigido para query derivada com `LocalDate`; o contexto PostgreSQL sobe e o CI remoto passa.
+- **QA-038 — CI compilava sem executar testes:** corrigido; o CI executa `clean verify` e publica JUnit/JaCoCo.
+- **QA-043 — hash exposto em `/agendamentos`:** corrigido com `@JsonIgnore`; a prova de contrato continua verde com `doesNotExist`.
+- **QA-027/QA-028 — conflitos de duplicidade:** o caminho 409 deixou de ser apenas de handler; corrida real de CPF/e-mail/matrícula está provada no PostgreSQL.
+- **QA-033 — transação ausente em `FuncionarioService`:** corrigido; o service está transacional e os fluxos de cadastrar, atualizar, alterar senha e desativar foram executados no banco real.
 
-No seu terminal, com o Docker Desktop aberto:
+Observação residual do QA-034: a correção vale para novas gravações. Não há estratégia documentada para hashes legados já persistidos nem política de rehash no primeiro login; isso deve ser tratado junto da implementação de autenticação.
 
-```powershell
-$env:JAVA_HOME = 'C:\Users\Thiago\Desktop\Codando Sadesgraça\Hemonorte\.qa-tools\jdk\jdk-21.0.12.1+1'
-.\mvnw.cmd clean test
-```
+## 6. Achados ativos
 
-Duas notas operacionais desta sessão, que roda em sandbox sem acesso ao mecanismo de attach da JVM: (1) o Mockito 5 precisa anexar seu agente à JVM; onde o attach é negado, os testes de controller morrem com `Could not initialize inline Byte Buddy mock maker` — a saída é pré-carregar o agente via `$env:JAVA_TOOL_OPTIONS = '-javaagent:<caminho do mockito-core-5.23.0.jar>'` (use caminho curto 8.3 se houver espaço no path; aspas internas quebram o mvnw.cmd). (2) não passe `-DargLine` no CLI para isso: a propriedade de CLI sombreia a que o `prepare-agent` do JaCoCo define, e a cobertura some silenciosamente. O contextLoads e tudo que exige banco real seguem precisando do seu terminal ou de CI com Docker — e vão trombar no QA-035 assim que o Flyway rodar.
+### QA-001 (crítico) — dados e operações sensíveis sem autenticação/autorização
 
-## 10. Riscos de configuração e persistência
+A issue de origem #7 e a frente de testes #16 continuam sem implementação: não há `SecurityFilterChain`, JWT ou matriz de perfis. A rodada encontrou uma regressão material: as novas rotas permitem, sem token ou senha atual:
 
-1. QA-035 primeiro: boot impossível — sem deploy, nada abaixo importa.
-2. QA-026/QA-034: hash de senha é responsabilidade do cliente e a "correção" é cosmética — fundação da auth.
-3. Senha do banco hardcoded (QA-029).
-4. Corrida de capacidade (QA-037) e contrato de duplicidade 400/409 (QA-028).
-5. Dados clínicos (sorologia, triagem, CPF, nascimento, gênero) sem auth nenhuma (QA-001) — LGPD.
-6. Auditoria sem emissor (QA-003), agora com comentário prometendo o que não faz.
-7. V1 e V2 aplicadas são intocáveis; ajuste de esquema vem em migração nova.
+- trocar a senha de qualquer doador/funcionário apenas com o UUID;
+- alterar o perfil de qualquer funcionário, inclusive para `ADMIN`.
 
-## 11. Decisões de negócio pendentes
+A sentinela `SENTINELA QA-001` em `AutorizacaoCadastroIntegrationTest` comprova em PostgreSQL que o perfil persistido muda para `ADMIN` e que a senha troca sem credencial. Impacto: tomada de conta, autoelevação e exposição LGPD. Correção recomendada: implementar a cadeia real da #7/#16 e exigir 401 sem token, 403 fora do papel e política explícita para reset de senha.
 
-1. CPF exige dígito verificador? (QA-007 — produto)
-2. Faixa etária mínima/máxima e consentimento? (clínica/produto)
-3. VENCIDA x DESCARTADA: bolsa expirada em análise vai pra qual? `EM_ANALISE→VENCIDA` deve existir? (QA-010 — clínica)
-4. Sorologia admite INDETERMINADO com reteste? (QA-016 — clínica)
-5. Hash de senha (BCrypt de verdade, QA-034) e mecanismo de auth (QA-001 — produto/tech)
-6. Intervalo entre doações: o 60/90 dias por sexo já está em código como "exemplo padrão" (`AptidaoService.kt:16`) — chancela clínica formal; a #17 testa os limites.
-7. Regras de capacidade e limite por doador (QA-037 — produto)
-8. Auditoria: quem grava e quando (QA-003 — produto/tech)
-9. Vocabulário de identidade de gênero, exposição na API, coleta opcional, nome social (seção 13)
+### QA-037 (alto) — capacidade, duplicidade e validade do slot
 
-## 12. Plano por etapas
+`AgendamentoService` continua com o padrão conta-então-insere (`service/AgendamentoService.kt:35-42`): duas transações podem observar a mesma vaga antes de inserir. Também não impede reserva ativa duplicada do mesmo doador nem revalida o início do slot no momento da reserva. A sentinela unitária da reserva duplicada permanece. A prova determinística da última vaga em PostgreSQL entra assim que houver proteção transacional/constraint apropriada.
 
-Etapa 0 (ambiente) — feita: JDK 21, Maven, acesso GitHub.
-Etapa 1 (domínio) — feita: 75 verdes.
-Etapa 2 (JaCoCo) — feita e refeita nesta rodada: 31,7% geral, model 55,8%.
-Etapa 3 (correções dos developers) — QA-024 e QA-025 corrigidos e provados; restam QA-034 (uma linha), QA-035 (uma linha), QA-036, QA-037, QA-039/QA-040 e QA-027/QA-028.
-Etapa 4 (services + integração real) — agora com roteiro: issues #15–#19 do M3; alvo inicial a #15, que não depende de auth.
-Etapa 5 (CI) — existe pela metade: compila sem testes e só em PR (QA-038); rodar `clean verify` e publicar JUnit/JaCoCo fazem parte da #15.
-Etapa 6 (sexo/identidade) — aguarda a decisão 9.
+### QA-039/QA-040 (alto) — fluxo de coleta/auditoria removido ou incompleto; sorologia não transiciona
 
-## 13. Sexo e identidade de gênero
+O commit `e1552b7` removeu controller, service, entidade e repository de coleta para destravar o boot, mas a V1 nunca criou a tabela correspondente. O resultado é que `POST /coletas` responde 404 e a jornada triagem→coleta→bolsa→comprovante→auditoria não existe. A auditoria segue sem emissor/rePOSITório; o exame sorológico salva resultado sem mover a bolsa. A correção exige migração aditiva e operação atômica, não a ressurreição do stub isolado.
 
-O QA-024 está corrigido — `genero` virou String com `@Pattern [MF]` no DTO, e a entidade segue Char M/F validado — portanto o cadastro funciona e a discussão fica mais barata. O mérito não mudou: separar sexo (a coluna atual, consultada por protocolos clínicos) de identidade de gênero (campo novo, opcional, vocabulário definido por produto e clínica — proposta inicial: HOMEM_CIS, HOMEM_TRANS, MULHER_CIS, MULHER_TRANS, NAO_BINARIO, OUTRO, NAO_INFORMADO). Três regras se mantêm: coleta opcional, nenhum preenchimento automático pra registro existente (NULL, sem inferência) e aptidão nunca pela identidade isoladamente. A migration continua sendo a próxima V livre (V3): `ALTER TABLE doador ADD COLUMN identidade_genero VARCHAR(20);`. Testes quando a decisão sair: identidade válida aceita, fora do enum rejeitada, ausência aceita, sexo seguindo M/F — e HOMEM_TRANS com sexo F é válido (independência semântica documentada em teste).
+### QA-036 (alto) — contagem de estoque sempre zero
 
-## 14. Próximas ações
+`EstoqueService.calcularBolsasAprovadasPorTipagem()` continua retornando `0`. O teste unitário adicionado pelo developer passa apenas porque `0 <= limite`, criando falsa confiança. A agregação real de bolsas `DISPONIVEL` dentro da validade continua pendente.
 
-1. Commits desta rodada, no formato combinado: um com a conversão das sentinelas, outro exclusivo com este relatório — ambos "QA commit", na develop, push no fim.
-2. Developers, em ordem de custo-benefício: QA-035 (crítico, uma linha), QA-034 (uma linha), QA-036, QA-037, QA-039/QA-040 (o fluxo que fecha o M2), QA-038 (CI rodando testes).
-3. Rodar `.\mvnw.cmd clean test` no seu terminal com Docker: o contextLoads valida Flyway V1→V2 + validate — e expõe o QA-035 na sua frente.
-4. Seguir o roteiro do M3 nas próximas rodadas de teste — a #15 é a primeira que não depende de auth (#16 espera a #7).
-5. Decisões da seção 11 — a 6 (intervalo 60/90) já tem código em produção esperando chancela.
+### QA-010/QA-003 (alto) — expiração executável, porém sem auditoria, lock ou fuso explícito
 
-Ressalva final: desta vez há execução completa da suíte unit — 90 testes no Maven 3.9.16 + Temurin 21.0.12.1 + Boot 4.1.1 nesta máquina, e os números da seção 8 vêm do jacoco.exec desta rodada. Não rodou: o contextLoads e tudo que exige banco real, porque o Docker segue inalcançável da sessão. O QA-035 é achado de leitura de código com confirmação inevitável: qualquer boot com banco o reproduz. Nada aqui é estimativa: veio de log, de execução ou de código — e cada achado traz arquivo e linha.
+A query da expiração foi corrigida, mas o serviço carrega `DISPONIVEL`, transiciona e salva sem `@Version`, lock ou update condicional. Uma disputa com utilização/descarte pode sobrescrever o estado terminal. O comentário de que a operação registra auditoria não corresponde ao código: não há emissor de `HistoricoAuditoria`; uma falha de auditoria também não reverteria a transição. `LocalDate.now()` usa o fuso do host, sem `Clock`/fuso aprovado.
+
+### QA-044 (médio) — contratos 422/409 ausentes e regra de negócio pode responder 200
+
+O handler mapeia `IllegalArgumentException` para 400; inaptidão deveria ser 422 e lotação/conflito deveria ser 409. Além disso, `RegraNegocioException` é tratada sem `@ResponseStatus`, portanto um erro serializado por esse handler sai com HTTP 200. Há três sentinelas: inaptidão 400, lotação 400 e regra de negócio 200. Quando o mapeamento tipado chegar, elas viram as provas 422/409/422.
+
+### QA-045 (novo, médio) — violação dimensional vira falso conflito 409
+
+Os services capturam `DataIntegrityViolationException` de forma ampla e transformam qualquer violação em “CPF/e-mail/matrícula já cadastrado”. O critério literal da #15 pede 400 para entrada inválida e 409 apenas para duplicidade. Em execução real, um nome acima de `VARCHAR(255)` passa Bean Validation, viola a dimensão no PostgreSQL e recebe 409 com mensagem de duplicidade. A sentinela `SENTINELA QA-045` fixa o comportamento atual. Correção: limitar campos com `@Size(max = 255)` e mapear constraint de unicidade separadamente das demais violações.
+
+### QA-029 (médio) — configuração expõe banco e API sem proteção
+
+A configuração da aplicação usa credencial fixa do PostgreSQL; o Compose publica banco e API em todas as interfaces e o Grafana não recebe senha configurada. O README também diverge da porta publicada. O achado antigo permanece e ganhou impacto maior com as rotas de escrita sem autorização.
+
+### Demais itens sem mudança
+
+Permanecem sob acompanhamento ou decisão de negócio: QA-003 (emissor de auditoria), QA-007 (dígito verificador de CPF), QA-010 (políticas de bolsa e expiração), QA-014 (relógios/fusos), QA-016 (sorologia indeterminada), QA-041 (volume negativo), QA-042 (políticas de exclusão divergentes) e as divergências funcionais já registradas nas issues #8–#14.
+
+## 7. Estado do marco M3
+
+| Issue | Veredito em 2026-10-30 |
+|---|---|
+| **#15** persistência, migrações e cadastros | **Avançada, ainda aberta:** migração incremental, schema JPA, CRUD, histórico, bcrypt/salt, duplicidade e corrida real estão provados; falta fechar os contratos 422, o mapeamento do erro dimensional e a política de hashes legados |
+| **#16** autenticação e autorização | **Não atendida:** sem JWT/filtros; a sentinela do QA-001 registra a regressão de escrita sem credencial |
+| **#17** horários, aptidão e concorrência | **Parcial:** regras unitárias existem; faltam concorrência determinística da última vaga, duplicidade, revalidação temporal e 422/409 |
+| **#18** triagem, coleta e auditoria | **Não atendida:** superfície de coleta removida e fluxo atômico/auditoria inexistente |
+| **#19** sorologia, estoque, expiração e jornada | **Não atendida:** estoque zero, sorologia sem transição, expiração sem auditoria/concorrência/fuso e sem jornada integrada |
+
+As cinco issues continuam abertas no GitHub e nenhum critério de aceite foi marcado pelo time. O QA não marca critérios nas issues do marco; o veredito acima é evidência de execução.
+
+## 8. Resultado da suíte
+
+| Bloco | Testes | Resultado |
+|---|---:|---|
+| Domínio/modelo | 75 | 75 verdes |
+| Bean Validation de DTO | 7 | 7 verdes |
+| Contratos/controllers | 17 | 17 verdes |
+| Services | 21 | 21 verdes |
+| Integração PostgreSQL/Testcontainers | 15 | 15 verdes |
+| **Total** | **135** | **135 verdes, 0 falhas, 0 erros, 0 ignorados** |
+
+## 9. JaCoCo
+
+Números desta execução: **68,8% das linhas (534/776), 68,7% das instruções (2682/3906) e 68,4% dos branches (141/206)**.
+
+| Pacote | Linhas | Instruções | Branches |
+|---|---:|---:|---:|
+| Domínio (model) | 69,8% (206/295) | 73,8% | 73,9% (102/138) |
+| Enums de domínio | 100% (17/17) | 100% | — |
+| DTOs | 61,0% (86/141) | 60,6% | — |
+| Controllers | 62,4% (63/101) | 53,0% | 40,0% (4/10) |
+| Services | 73,1% (158/216) | 65,8% | 60,3% (35/58) |
+| Exceções | 100% (2/2) | 100% | — |
+| **Projeto** | **68,8% (534/776)** | **68,7%** | **68,4%** |
+
+A evolução contra 2026-10-23 é **334→534 linhas cobertas** e **44,1%→68,8%**, enquanto o denominador cresceu de 757 para 776 por causa do código novo dos developers. Ou seja, a melhora não veio de reduzir a base: foram **+200 linhas de produção cobertas**, com `DoadorService` em 39/44 linhas, `FuncionarioService` em 38/41 e os controllers de cadastro em 23/25 e 10/10. As áreas ainda zeradas ou baixas continuam correspondendo aos bloqueios de fluxo: auditoria 0/17, triagem 5/23, expiração 4/15 e DTOs clínicos ainda sem integração HTTP.
+
+## 10. Riscos e decisões pendentes
+
+1. **QA-001 é prioridade de segurança:** escrita de senha/perfil sem autenticação deve ser bloqueada antes da exposição do Compose.
+2. **QA-037:** a próxima prova de concorrência da agenda só deve ser escrita junto de uma estratégia transacional/constraint no produto.
+3. **QA-039/QA-040:** não recriar a tabela de coleta sem antes definir a operação atômica e a auditoria.
+4. **QA-010/QA-003:** clock/fuso, política de `EM_ANALISE` e emissor de auditoria precisam de decisão antes dos testes de expiração.
+5. **QA-044/QA-045:**tipar regras de negócio e separar “entrada inválida” de “duplicidade”.
+6. **QA-029:** não publicar API/banco/Grafana em todas as interfaces; usar loopback/rede privada e segredos de ambiente.
+7. **QA-007/QA-014/QA-016:** não inventar regra clínica, dígito de CPF, fuso ou resultado sorológico sem decisão registrada.
+
+## 11. Próximas ações
+
+1. Developers: tratar QA-001, QA-044 e QA-045 antes das demais frentes; os dois últimos têm sentinelas prontas para inversão.
+2. Após correção do agendamento, implementar a prova PostgreSQL determinística da última vaga e da reserva duplicada da #17.
+3. Após a definição de coleta/auditoria, implementar rollback, unicidade concorrente e comprovante da #18.
+4. Após definir clock/fuso e política de bolsa, implementar expiração concorrente e estoque real da #19.
+5. QA: manter sentinelas com nomes/IDs estáveis; converter cada uma em prova do contrato corrigido assim que a mudança chegar.
+
+## 12. Evidência final
+
+- Baseline remoto: GitHub Actions run `40220462421`, `75bfcd4`, `clean verify`, sucesso.
+- Execução local final: `./mvnw -B -ntp clean verify`, Maven 3.9.16, Temurin 21.0.12.1, PostgreSQL 16 via Testcontainers.
+- Resultado final: **135 testes, 135 verdes, 0 ignorados**.
+- Cobertura: números medidos na seção 9 a partir do `jacoco.exec` da execução final.

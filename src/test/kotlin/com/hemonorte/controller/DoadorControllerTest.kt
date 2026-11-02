@@ -1,11 +1,14 @@
 package com.hemonorte.controller
 
+import com.hemonorte.exception.ConflitoException
 import com.hemonorte.model.Doador
 import com.hemonorte.service.DoadorService
 import org.junit.jupiter.api.Tag
 import org.mockito.Mockito
+import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
@@ -60,5 +63,28 @@ class DoadorControllerTest {
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.length()").value(1))
             .andExpect(jsonPath("$[0].nome").value("Ana Souza"))
+    }
+
+    @Test
+    fun `POST com conflito de unicidade devolve 409 - contrato do handler para duplicidade`() {
+        Mockito.`when`(
+            service.cadastrar(
+                nome = "Ana Souza",
+                email = "ana@email.com",
+                cpf = "12345678901",
+                senha = "senha-segura",
+                tipagem = "O+",
+                dataNascimento = LocalDate.of(1996, 8, 15),
+                genero = 'F',
+            ),
+        ).thenThrow(ConflitoException("CPF ou e-mail já cadastrado"))
+
+        mockMvc.perform(
+            post("/api/doador")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"nome":"Ana Souza","email":"ana@email.com","cpf":"12345678901","senha":"senha-segura","tipagem":"O+","dataNascimento":"1996-08-15","genero":"F"}"""),
+        )
+            .andExpect(status().isConflict)
+            .andExpect(jsonPath("$.erro").value("CPF ou e-mail já cadastrado"))
     }
 }

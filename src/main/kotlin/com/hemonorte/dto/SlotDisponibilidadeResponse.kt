@@ -1,4 +1,3 @@
-
 package com.hemonorte.dto
 
 import java.time.Instant
@@ -8,5 +7,5 @@ data class SlotDisponibilidadeResponse(
     val id: UUID,
     val inicio: Instant,
     val capacidade: Int,
-    val vagasDisponiveis: Int
+    val vagasDisponiveis: Int,
 )

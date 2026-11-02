@@ -57,4 +57,6 @@ class TriagemService(
         return triagemRepository.findByAgendamentoId(agendamentoId)
             .orElseThrow { IllegalArgumentException("Triagem não encontrada para este agendamento") }
     }
+
+    fun listar(): List<Triagem> = triagemRepository.findAll()
 }

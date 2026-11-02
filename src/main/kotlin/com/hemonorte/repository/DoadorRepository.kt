@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository
 import java.util.UUID
 
 interface DoadorRepository : JpaRepository<Doador, UUID> {
+    fun findByCpf(cpf: String): Doador?
     fun existsByCpf(cpf: String): Boolean
     fun existsByEmail(email: String): Boolean
 }

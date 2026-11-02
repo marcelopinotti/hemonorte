@@ -1,0 +1,40 @@
+package com.hemonorte.service
+
+import com.hemonorte.model.BolsaSangue
+import com.hemonorte.model.enums.StatusBolsa
+import com.hemonorte.repository.AgendamentoRepository
+import com.hemonorte.repository.BolsaSangueRepository
+import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
+import java.time.LocalDate
+import java.util.UUID
+
+@Service
+@Transactional(readOnly = true)
+class BolsaSangueService(
+    private val bolsaRepository: BolsaSangueRepository,
+    private val agendamentoRepository: AgendamentoRepository,
+) {
+    fun listar(): List<BolsaSangue> = bolsaRepository.findAll()
+
+    fun listarPendentes(): List<BolsaSangue> = bolsaRepository.findByStatus(StatusBolsa.EM_ANALISE)
+
+    @Transactional
+    fun criar(
+        agendamentoId: UUID,
+        tipagem: String,
+        dataColeta: LocalDate,
+        dataValidade: LocalDate,
+    ): BolsaSangue {
+        val agendamento = agendamentoRepository.findById(agendamentoId)
+            .orElseThrow { NoSuchElementException("Agendamento não encontrado") }
+        return bolsaRepository.save(BolsaSangue(agendamento, tipagem, dataColeta, dataValidade))
+    }
+
+    @Transactional
+    fun atualizarStatus(id: UUID, status: StatusBolsa): BolsaSangue {
+        val bolsa = bolsaRepository.findById(id).orElseThrow { NoSuchElementException("Bolsa não encontrada") }
+        bolsa.transicionarPara(status)
+        return bolsaRepository.save(bolsa)
+    }
+}

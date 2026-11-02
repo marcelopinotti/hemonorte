@@ -49,4 +49,9 @@ class ExameSorologicoService(
         return exameSorologicoRepository.findByBolsaId(bolsaId)
             .orElseThrow { IllegalArgumentException("Exame sorológico não encontrado para esta bolsa") }
     }
+
+    fun listar(): List<ExameSorologico> = exameSorologicoRepository.findAll()
+
+    fun buscar(id: UUID): ExameSorologico = exameSorologicoRepository.findById(id)
+        .orElseThrow { NoSuchElementException("Exame sorológico não encontrado") }
 }

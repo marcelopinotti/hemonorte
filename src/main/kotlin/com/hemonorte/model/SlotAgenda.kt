@@ -27,6 +27,11 @@ class SlotAgenda(
     var capacidade: Int = validarCapacidade(capacidade)
         protected set
 
+    fun atualizar(novoInicio: Instant, novaCapacidade: Int) {
+        inicio = validarInicio(novoInicio)
+        capacidade = validarCapacidade(novaCapacidade)
+    }
+
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true

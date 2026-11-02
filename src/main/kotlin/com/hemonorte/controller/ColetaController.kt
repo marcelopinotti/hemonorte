@@ -1,33 +1,29 @@
 package com.hemonorte.controller
 
-import com.hemonorte.dto.RegistrarColetaRequest
-import com.hemonorte.model.Coleta
-import com.hemonorte.service.ColetaService
+import com.hemonorte.dto.BolsaSangueResponse
+import com.hemonorte.dto.CriarBolsaRequest
+import com.hemonorte.dto.toResponse
+import com.hemonorte.service.BolsaSangueService
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
-import org.springframework.http.ResponseEntity
+import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.web.bind.annotation.*
-import java.util.UUID
 
 @RestController
 @RequestMapping("/coletas")
-class ColetaController(
-    private val coletaService: ColetaService
-) {
+@PreAuthorize("hasAnyRole('COLETA', 'ADMIN')")
+class ColetaController(private val bolsaSangueService: BolsaSangueService) {
 
     @PostMapping
-    fun registrarColeta(@RequestBody @Valid request: RegistrarColetaRequest): ResponseEntity<Coleta> {
-        val coleta = coletaService.registrarColeta(
-            triagemId = request.triagemId,
-            funcionarioId = request.funcionarioId,
-            volumeMl = request.volumeMl
-        )
-        return ResponseEntity.status(HttpStatus.CREATED).body(coleta)
-    }
+    @ResponseStatus(HttpStatus.CREATED)
+    fun registrar(@Valid @RequestBody request: CriarBolsaRequest): BolsaSangueResponse =
+        bolsaSangueService.criar(
+            request.agendamentoId,
+            request.tipagem,
+            request.dataColeta,
+            request.dataValidade,
+        ).toResponse()
 
-    @GetMapping("/triagem/{triagemId}")
-    fun buscarPorTriagem(@PathVariable triagemId: UUID): ResponseEntity<Coleta> {
-        val coleta = coletaService.buscarPorTriagem(triagemId)
-        return ResponseEntity.ok(coleta)
-    }
+    @GetMapping
+    fun listar(): List<BolsaSangueResponse> = bolsaSangueService.listar().map { it.toResponse() }
 }

@@ -1,6 +1,7 @@
 package com.hemonorte.controller
 
 import com.hemonorte.dto.AtualizacaoFuncionarioRequest
+import com.hemonorte.dto.AlteracaoSenhaRequest
 import com.hemonorte.dto.CadastroFuncionarioRequest
 import com.hemonorte.dto.FuncionarioResponse
 import com.hemonorte.service.FuncionarioService
@@ -15,10 +16,12 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
+import org.springframework.security.access.prepost.PreAuthorize
 import java.util.UUID
 
 @RestController
 @RequestMapping("/api/funcionario")
+@PreAuthorize("hasRole('ADMIN')")
 class FuncionarioController(private val service: FuncionarioService) {
 
 
@@ -35,11 +38,19 @@ class FuncionarioController(private val service: FuncionarioService) {
     fun buscar(@PathVariable id: UUID): FuncionarioResponse = service.buscar(id)
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN') and (#id != authentication.principal.id or #request.perfil == authentication.principal.perfil)")
     fun atualizar(@PathVariable id: UUID, @Valid @RequestBody request: AtualizacaoFuncionarioRequest): FuncionarioResponse =
         service.atualizar(id, request)
 
+    @PutMapping("/{id}/senha")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    fun alterarSenha(@PathVariable id: UUID, @Valid @RequestBody request: AlteracaoSenhaRequest) {
+        service.alterarSenha(id, request.senha)
+    }
+
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("hasRole('ADMIN') and #id != authentication.principal.id")
     fun excluir(@PathVariable id: UUID) {
         service.excluir(id)
     }

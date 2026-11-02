@@ -1,11 +1,18 @@
 package com.hemonorte.controller
 
 import com.hemonorte.repository.DoadorRepository
+import com.hemonorte.security.DoadorAutenticado
+import com.hemonorte.security.usuarioAutenticado
 import com.hemonorte.service.AptidaoService
 import com.hemonorte.service.ResultadoAptidao
 import org.springframework.http.ResponseEntity
-import org.springframework.web.bind.annotation.*
-import java.util.UUID
+import org.springframework.security.access.prepost.PreAuthorize
+import org.springframework.security.core.Authentication
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RestController
+import java.util.*
 
 @RestController
 @RequestMapping("/doadores")
@@ -15,7 +22,12 @@ class AptidaoController(
 ) {
 
     @GetMapping("/{id}/aptidao")
-    fun verificarAptidao(@PathVariable id: UUID): ResponseEntity<ResultadoAptidao> {
+    @PreAuthorize("hasAuthority('TIPO_DOADOR') or hasAnyRole('TRIAGEM', 'ADMIN')")
+    fun verificarAptidao(@PathVariable id: UUID, authentication: Authentication): ResponseEntity<ResultadoAptidao> {
+        val principal = authentication.usuarioAutenticado()
+        if (principal is DoadorAutenticado && principal.id != id) {
+            throw org.springframework.security.access.AccessDeniedException("Acesso negado")
+        }
         val doador = doadorRepository.findById(id).orElse(null)
             ?: return ResponseEntity.notFound().build()
 

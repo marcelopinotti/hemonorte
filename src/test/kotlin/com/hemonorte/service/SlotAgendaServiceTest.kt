@@ -1,6 +1,10 @@
 package com.hemonorte.service
 
+import com.hemonorte.dto.SlotDisponibilidadeResponse
+import com.hemonorte.model.Agendamento
 import com.hemonorte.model.SlotAgenda
+import com.hemonorte.model.enums.StatusAgendamento
+import com.hemonorte.repository.AgendamentoRepository
 import com.hemonorte.repository.SlotAgendaRepository
 import org.junit.jupiter.api.Tag
 import org.mockito.Mockito
@@ -14,7 +18,8 @@ import kotlin.test.assertTrue
 class SlotAgendaServiceTest {
 
     private val repository = Mockito.mock(SlotAgendaRepository::class.java)
-    private val service = SlotAgendaService(repository)
+    private val agendamentoRepository = Mockito.mock(AgendamentoRepository::class.java)
+    private val service = SlotAgendaService(repository, agendamentoRepository)
 
     // Matcher do Mockito com cara de nao-nulo pro compilador Kotlin: o any() bruto devolve
     // null em runtime e o check de parametro nao-nulo explode antes de alcancar o mock
@@ -57,12 +62,22 @@ class SlotAgendaServiceTest {
     }
 
     @Test
-    fun `consulta por periodo delega ao repositorio`() {
+    fun `consulta por periodo calcula vagas e omite slots lotados`() {
         val de = Instant.now().plusSeconds(3_600)
         val ate = de.plusSeconds(86_400)
-        val esperado = listOf(SlotAgenda(de, 5))
-        Mockito.`when`(repository.findByInicioBetween(de, ate)).thenReturn(esperado)
+        val parcial = SlotAgenda(de, 5)
+        val lotado = SlotAgenda(de.plusSeconds(3_600), 5)
+        Mockito.`when`(repository.findByInicioBetween(de, ate)).thenReturn(listOf(parcial, lotado))
+        Mockito.`when`(
+            agendamentoRepository.findBySlotIdAndStatus(parcial.id, StatusAgendamento.PENDENTE)
+        ).thenReturn(List(2) { Mockito.mock(Agendamento::class.java) })
+        Mockito.`when`(
+            agendamentoRepository.findBySlotIdAndStatus(lotado.id, StatusAgendamento.PENDENTE)
+        ).thenReturn(List(5) { Mockito.mock(Agendamento::class.java) })
 
-        assertEquals(esperado, service.listarPorPeriodo(de, ate))
+        assertEquals(
+            listOf(SlotDisponibilidadeResponse(parcial.id, de, 5, 3)),
+            service.listarPorPeriodo(de, ate)
+        )
     }
 }

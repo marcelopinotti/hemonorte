@@ -2,6 +2,8 @@ package com.hemonorte.service
 
 import com.hemonorte.model.Agendamento
 import com.hemonorte.model.enums.StatusAgendamento
+import com.hemonorte.exception.ConflitoException
+import com.hemonorte.exception.InaptidaoDoacaoException
 import com.hemonorte.repository.AgendamentoRepository
 import com.hemonorte.repository.DoadorRepository
 import com.hemonorte.repository.SlotAgendaRepository
@@ -30,14 +32,13 @@ class AgendamentoService(
 
         // Valida se o doador está apto para doar
         val resultadoAptidao = aptidaoService.verificarAptidao(doador)
-        require(resultadoAptidao.apto) {
-            "Doador inaptado: ${resultadoAptidao.motivo}"
+        if (!resultadoAptidao.apto) {
+            throw InaptidaoDoacaoException(resultadoAptidao)
         }
 
-        // Valida capacidade do slot (conta quantos agendamentos ativos existem para este slot)
-        val agendamentosNoSlot = agendamentoRepository.findBySlotIdAndStatus(slotId, StatusAgendamento.PENDENTE)
-        require(agendamentosNoSlot.size < slot.capacidade) {
-            "Slot lotado para este horário"
+        val ocupacao = agendamentoRepository.countBySlotIdAndStatus(slotId, StatusAgendamento.PENDENTE)
+        if (ocupacao >= slot.capacidade.toLong()) {
+            throw ConflitoException("Slot lotado para este horário")
         }
 
         // Cria o agendamento

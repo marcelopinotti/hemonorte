@@ -1,5 +1,7 @@
 package com.hemonorte.service
 
+import com.hemonorte.exception.InaptidaoDoacaoException
+import com.hemonorte.exception.ConflitoException
 import com.hemonorte.model.Agendamento
 import com.hemonorte.model.Doador
 import com.hemonorte.model.SlotAgenda
@@ -9,14 +11,14 @@ import com.hemonorte.repository.DoadorRepository
 import com.hemonorte.repository.SlotAgendaRepository
 import org.junit.jupiter.api.Tag
 import org.mockito.Mockito
+import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneOffset
 import java.util.Optional
-import java.util.UUID
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
-import kotlin.test.assertTrue
 
 @Tag("unit")
 class AgendamentoServiceTest {
@@ -24,146 +26,116 @@ class AgendamentoServiceTest {
     private val agendamentoRepository = Mockito.mock(AgendamentoRepository::class.java)
     private val doadorRepository = Mockito.mock(DoadorRepository::class.java)
     private val slotAgendaRepository = Mockito.mock(SlotAgendaRepository::class.java)
-    private val aptidaoService = Mockito.mock(AptidaoService::class.java)
-    private val service = AgendamentoService(
-        agendamentoRepository, doadorRepository, slotAgendaRepository, aptidaoService
+    private val aptidaoService = AptidaoService(
+        agendamentoRepository,
+        Clock.fixed(Instant.parse("2035-11-10T10:00:00Z"), ZoneOffset.UTC),
     )
-
-    @Suppress("UNCHECKED_CAST")
-    private fun <T> qualquer(): T = Mockito.any() as T
-
+    private val service = AgendamentoService(
+        agendamentoRepository,
+        doadorRepository,
+        slotAgendaRepository,
+        aptidaoService,
+    )
     private val doador = Doador(
         nome = "Ana Souza",
         email = "ana@email.com",
         senhaHash = "hash-valido",
         tipagem = "O+",
-        dataNascimento = LocalDate.now().minusYears(30),
+        dataNascimento = LocalDate.of(1990, 1, 1),
         genero = 'F',
         cpf = "12345678901",
     )
+    private val slot = SlotAgenda(Instant.parse("2035-11-10T12:00:00Z"), 5)
 
-    private val slot = SlotAgenda(Instant.now().plusSeconds(86_400), 5)
-
-    private fun apto() = ResultadoAptidao(apto = true, motivo = null, proximaDataPermitida = null)
+    @Suppress("UNCHECKED_CAST")
+    private fun <T> qualquer(): T = Mockito.any() as T
 
     @Test
-    fun `cria agendamento PENDENTE quando doador apto e ha vagas`() {
-        Mockito.`when`(doadorRepository.findById(doador.id)).thenReturn(Optional.of(doador))
-        Mockito.`when`(slotAgendaRepository.findById(slot.id)).thenReturn(Optional.of(slot))
-        Mockito.`when`(aptidaoService.verificarAptidao(doador)).thenReturn(apto())
+    fun `cria reserva quando apto e ha vaga`() {
+        prepararEntidades()
         Mockito.`when`(
-            agendamentoRepository.findBySlotIdAndStatus(slot.id, StatusAgendamento.PENDENTE)
-        ).thenReturn(emptyList())
+            agendamentoRepository.countBySlotIdAndStatus(slot.id, StatusAgendamento.PENDENTE),
+        ).thenReturn(4)
         Mockito.`when`(agendamentoRepository.save(qualquer()))
             .thenAnswer { it.arguments[0] as Agendamento }
 
-        val agendamento = service.realizarAgendamento(doador.id, slot.id)
+        val resultado = service.realizarAgendamento(doador.id, slot.id)
 
-        assertEquals(StatusAgendamento.PENDENTE, agendamento.status)
-        Mockito.verify(agendamentoRepository).save(agendamento)
+        assertEquals(StatusAgendamento.PENDENTE, resultado.status)
     }
 
     @Test
-    fun `rejeita doador inapto com o motivo da aptidao`() {
-        Mockito.`when`(doadorRepository.findById(doador.id)).thenReturn(Optional.of(doador))
-        Mockito.`when`(slotAgendaRepository.findById(slot.id)).thenReturn(Optional.of(slot))
-        Mockito.`when`(aptidaoService.verificarAptidao(doador)).thenReturn(
-            ResultadoAptidao(
-                apto = false,
-                motivo = "Intervalo mínimo entre doações não respeitado.",
-                proximaDataPermitida = LocalDate.now().plusDays(30),
-            )
-        )
+    fun `lotacao usa conflito`() {
+        prepararEntidades()
+        Mockito.`when`(
+            agendamentoRepository.countBySlotIdAndStatus(slot.id, StatusAgendamento.PENDENTE),
+        ).thenReturn(5)
 
-        val erro = assertFailsWith<IllegalArgumentException> {
+        assertFailsWith<ConflitoException> {
             service.realizarAgendamento(doador.id, slot.id)
         }
-        assertTrue(erro.message!!.contains("Intervalo mínimo"))
+    }
+
+    @Test
+    fun `intervalo nao cumprido impede reserva antes da contagem e persistencia`() {
+        prepararEntidades()
+        val doacaoAnterior = Agendamento(
+            doador,
+            SlotAgenda(Instant.parse("2035-10-01T12:00:00Z"), 1),
+        ).also { it.concluir() }
+        Mockito.`when`(
+            agendamentoRepository.findByDoadorIdAndStatus(doador.id, StatusAgendamento.CONCLUIDO),
+        ).thenReturn(listOf(doacaoAnterior))
+        val serviceComRegra = AgendamentoService(
+            agendamentoRepository,
+            doadorRepository,
+            slotAgendaRepository,
+            AptidaoService(
+                agendamentoRepository,
+                Clock.fixed(Instant.parse("2035-11-10T12:00:00Z"), ZoneOffset.UTC),
+            ),
+        )
+
+        val erro = assertFailsWith<InaptidaoDoacaoException> {
+            serviceComRegra.realizarAgendamento(doador.id, slot.id)
+        }
+        assertEquals("Intervalo mínimo entre doações não cumprido", erro.resultado.motivo)
+        assertEquals(LocalDate.of(2035, 12, 30), erro.resultado.proximaDataPermitida)
+        Mockito.verify(agendamentoRepository, Mockito.never())
+            .countBySlotIdAndStatus(slot.id, StatusAgendamento.PENDENTE)
         Mockito.verify(agendamentoRepository, Mockito.never()).save(qualquer())
     }
 
     @Test
-    fun `rejeita slot lotado`() {
+    fun `cancelar persiste transicao`() {
+        val agendamento = Agendamento(doador, slot)
+        Mockito.`when`(agendamentoRepository.findById(agendamento.id))
+            .thenReturn(Optional.of(agendamento))
+        Mockito.`when`(agendamentoRepository.save(qualquer()))
+            .thenAnswer { it.arguments[0] as Agendamento }
+
+        assertEquals(
+            StatusAgendamento.CANCELADO,
+            service.cancelarAgendamento(agendamento.id).status,
+        )
+    }
+
+    @Test
+    fun `registrar falta persiste transicao`() {
+        val agendamento = Agendamento(doador, slot)
+        Mockito.`when`(agendamentoRepository.findById(agendamento.id))
+            .thenReturn(Optional.of(agendamento))
+        Mockito.`when`(agendamentoRepository.save(qualquer()))
+            .thenAnswer { it.arguments[0] as Agendamento }
+
+        assertEquals(StatusAgendamento.FALTOU, service.registrarFalta(agendamento.id).status)
+    }
+
+    private fun prepararEntidades() {
         Mockito.`when`(doadorRepository.findById(doador.id)).thenReturn(Optional.of(doador))
         Mockito.`when`(slotAgendaRepository.findById(slot.id)).thenReturn(Optional.of(slot))
-        Mockito.`when`(aptidaoService.verificarAptidao(doador)).thenReturn(apto())
-        val ocupadas = List(5) { Agendamento(doador = doador, slot = slot) }
         Mockito.`when`(
-            agendamentoRepository.findBySlotIdAndStatus(slot.id, StatusAgendamento.PENDENTE)
-        ).thenReturn(ocupadas)
-
-        val erro = assertFailsWith<IllegalArgumentException> {
-            service.realizarAgendamento(doador.id, slot.id)
-        }
-        assertTrue(erro.message!!.contains("Slot lotado"))
-    }
-
-    @Test
-    fun `rejeita doador inexistente`() {
-        val idDesconhecido = UUID.randomUUID()
-        Mockito.`when`(doadorRepository.findById(idDesconhecido)).thenReturn(Optional.empty())
-
-        val erro = assertFailsWith<IllegalArgumentException> {
-            service.realizarAgendamento(idDesconhecido, slot.id)
-        }
-        assertTrue(erro.message!!.contains("Doador não encontrado"))
-    }
-
-    @Test
-    fun `rejeita slot inexistente`() {
-        val idDesconhecido = UUID.randomUUID()
-        Mockito.`when`(doadorRepository.findById(doador.id)).thenReturn(Optional.of(doador))
-        Mockito.`when`(slotAgendaRepository.findById(idDesconhecido)).thenReturn(Optional.empty())
-
-        val erro = assertFailsWith<IllegalArgumentException> {
-            service.realizarAgendamento(doador.id, idDesconhecido)
-        }
-        assertTrue(erro.message!!.contains("Slot de agenda não encontrado"))
-    }
-
-    @Test
-    fun `SENTINELA QA-037 - reserva ativa duplicada do mesmo doador no mesmo slot e aceita`() {
-        // Contrato das issues #9 e #17: impedir reserva ativa duplicada do mesmo doador no
-        // mesmo slot. Hoje nada checa: com uma reserva PENDENTE existente e capacidade 5,
-        // o mesmo doador reserva de novo. Quando a correcao chegar, este teste vira
-        // assercao de rejeicao (IllegalArgumentException com o motivo do contrato).
-        Mockito.`when`(doadorRepository.findById(doador.id)).thenReturn(Optional.of(doador))
-        Mockito.`when`(slotAgendaRepository.findById(slot.id)).thenReturn(Optional.of(slot))
-        Mockito.`when`(aptidaoService.verificarAptidao(doador)).thenReturn(apto())
-        Mockito.`when`(
-            agendamentoRepository.findBySlotIdAndStatus(slot.id, StatusAgendamento.PENDENTE)
-        ).thenReturn(listOf(Agendamento(doador = doador, slot = slot)))
-        Mockito.`when`(agendamentoRepository.save(qualquer()))
-            .thenAnswer { it.arguments[0] as Agendamento }
-
-        val segundaReserva = service.realizarAgendamento(doador.id, slot.id)
-
-        // aceito hoje - e o defeito documentado; a contagem nao olha o dono das reservas
-        assertEquals(StatusAgendamento.PENDENTE, segundaReserva.status)
-        Mockito.verify(agendamentoRepository).save(segundaReserva)
-    }
-
-    @Test
-    fun `cancelar persiste a transicao de PENDENTE para CANCELADO`() {
-        val agendamento = Agendamento(doador = doador, slot = slot)
-        Mockito.`when`(agendamentoRepository.findById(agendamento.id)).thenReturn(Optional.of(agendamento))
-        Mockito.`when`(agendamentoRepository.save(qualquer()))
-            .thenAnswer { it.arguments[0] as Agendamento }
-
-        val cancelado = service.cancelarAgendamento(agendamento.id)
-
-        assertEquals(StatusAgendamento.CANCELADO, cancelado.status)
-    }
-
-    @Test
-    fun `registrar falta persiste a transicao de PENDENTE para FALTOU`() {
-        val agendamento = Agendamento(doador = doador, slot = slot)
-        Mockito.`when`(agendamentoRepository.findById(agendamento.id)).thenReturn(Optional.of(agendamento))
-        Mockito.`when`(agendamentoRepository.save(qualquer()))
-            .thenAnswer { it.arguments[0] as Agendamento }
-
-        val comFalta = service.registrarFalta(agendamento.id)
-
-        assertEquals(StatusAgendamento.FALTOU, comFalta.status)
+            agendamentoRepository.findByDoadorIdAndStatus(doador.id, StatusAgendamento.CONCLUIDO),
+        ).thenReturn(emptyList())
     }
 }

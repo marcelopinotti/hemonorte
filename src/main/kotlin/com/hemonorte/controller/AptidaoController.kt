@@ -1,10 +1,10 @@
 package com.hemonorte.controller
 
 import com.hemonorte.repository.DoadorRepository
+import com.hemonorte.model.ResultadoAptidao
 import com.hemonorte.security.DoadorAutenticado
 import com.hemonorte.security.usuarioAutenticado
 import com.hemonorte.service.AptidaoService
-import com.hemonorte.service.ResultadoAptidao
 import org.springframework.http.ResponseEntity
 import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.security.core.Authentication

@@ -1,54 +1,34 @@
 package com.hemonorte.service
 
 import com.hemonorte.model.Doador
+import com.hemonorte.model.RegraAptidaoDoacao
+import com.hemonorte.model.ResultadoAptidao
 import com.hemonorte.model.enums.StatusAgendamento
 import com.hemonorte.repository.AgendamentoRepository
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
+import java.time.Clock
 import java.time.LocalDate
-import java.time.Period
-import java.util.UUID
+import java.time.ZoneId
 
 @Service
 class AptidaoService(
-    private val agendamentoRepository: AgendamentoRepository
+    private val agendamentoRepository: AgendamentoRepository,
+    private val clock: Clock,
 ) {
 
-    // Regra paramétrica (exemplo padrão: 60 dias para homens, 90 dias para mulheres)
-    // Conforme a issue, isso pode ser ajustado conforme validação com os responsáveis.
-    fun verificarAptidao(doador: Doador, dataReferencia: LocalDate = LocalDate.now()): ResultadoAptidao {
-        // Busca os agendamentos concluídos do doador (cancelamentos e faltas são ignorados)
-        val historicoConcluido = agendamentoRepository.findByDoadorIdAndStatus(doador.id, StatusAgendamento.CONCLUIDO)
+    @Transactional(readOnly = true)
+    fun verificarAptidao(doador: Doador): ResultadoAptidao =
+        verificarAptidao(doador, LocalDate.now(clock.withZone(FUSO_CLINICO)))
 
-        if (historicoConcluido.isEmpty()) {
-            return ResultadoAptidao(apto = true, motivo = null, proximaDataPermitida = null)
-        }
+    fun verificarAptidao(doador: Doador, dataReferencia: LocalDate): ResultadoAptidao {
+        val historico = agendamentoRepository
+            .findByDoadorIdAndStatus(doador.id, StatusAgendamento.CONCLUIDO)
+            .map { it.slot.inicio.atZone(FUSO_CLINICO).toLocalDate() }
+        return RegraAptidaoDoacao.avaliar(doador.genero, historico, dataReferencia)
+    }
 
-        // Pega a última doação concluída (ordenada pela data do slot/agendamento)
-        // Supondo que tenhamos como comparar pelas datas dos slots associados
-        val ultimaDoacao = historicoConcluido.maxByOrNull { it.slot.inicio }
-        
-        if (ultimaDoacao != null) {
-            val dataUltimaDoacao = ultimaDoacao.slot.inicio.atZone(java.time.ZoneId.systemDefault()).toLocalDate()
-            
-            // Intervalo exigido com base no gênero (ex: Homem = 60 dias, Mulher = 90 dias)
-            val diasIntervaloMinimo = if (doador.genero.uppercaseChar() == 'M') 60 else 90
-            val proximaDataPermitida = dataUltimaDoacao.plusDays(diasIntervaloMinimo.toLong())
-
-            if (dataReferencia.isBefore(proximaDataPermitida)) {
-                return ResultadoAptidao(
-                    apto = false,
-                    motivo = "Intervalo mínimo entre doações não respeitado.",
-                    proximaDataPermitida = proximaDataPermitida
-                )
-            }
-        }
-
-        return ResultadoAptidao(apto = true, motivo = null, proximaDataPermitida = null)
+    private companion object {
+        val FUSO_CLINICO: ZoneId = ZoneId.of("America/Fortaleza")
     }
 }
-
-data class ResultadoAptidao(
-    val apto: Boolean,
-    val motivo: String?,
-    val proximaDataPermitida: LocalDate?
-)

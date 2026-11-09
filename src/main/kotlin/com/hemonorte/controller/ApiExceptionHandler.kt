@@ -2,6 +2,7 @@ package com.hemonorte.controller
 
 import com.hemonorte.exception.ConflitoException
 import com.hemonorte.exception.AutenticacaoException
+import com.hemonorte.exception.InaptidaoDoacaoException
 import com.hemonorte.exception.RegraNegocioException
 import jakarta.validation.ConstraintViolationException
 import org.springframework.dao.DataIntegrityViolationException
@@ -24,6 +25,10 @@ class ApiExceptionHandler {
     @ExceptionHandler(NoSuchElementException::class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
     fun naoEncontrado(exception: NoSuchElementException) = ApiError(exception.message ?: "Recurso não encontrado")
+
+    @ExceptionHandler(InaptidaoDoacaoException::class)
+    @ResponseStatus(HttpStatus.UNPROCESSABLE_CONTENT)
+    fun doadorInapto(exception: InaptidaoDoacaoException) = exception.resultado
 
     @ExceptionHandler(IllegalArgumentException::class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)

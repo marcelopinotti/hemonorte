@@ -1,7 +1,9 @@
 package com.hemonorte.controller
 
+import com.hemonorte.exception.InaptidaoDoacaoException
 import com.hemonorte.model.Agendamento
 import com.hemonorte.model.Doador
+import com.hemonorte.model.ResultadoAptidao
 import com.hemonorte.model.SlotAgenda
 import com.hemonorte.service.AgendamentoService
 import org.junit.jupiter.api.Tag
@@ -81,21 +83,29 @@ class AgendamentoControllerTest {
     }
 
     @Test
-    fun `SENTINELA - doador inapto devolve 400 hoje - contrato da issue 9 prevê 422 com motivo`() {
-        // O handler mapeia IllegalArgumentException para 400; o contrato da #9/#17 pede 422
-        // com o motivo da inaptidao. Quando o mapeamento existir, trocar a assercao.
+    fun `doador inapto devolve 422 com motivo e proxima data permitida`() {
         val doadorId = UUID.randomUUID()
         val slotId = UUID.randomUUID()
         Mockito.`when`(service.realizarAgendamento(doadorId, slotId))
-            .thenThrow(IllegalArgumentException("Doador inaptado: Intervalo mínimo entre doações não respeitado."))
+            .thenThrow(
+                InaptidaoDoacaoException(
+                    ResultadoAptidao(
+                        apto = false,
+                        motivo = "Intervalo mínimo entre doações não cumprido",
+                        proximaDataPermitida = LocalDate.of(2036, 1, 9),
+                    ),
+                ),
+            )
 
         mockMvc.perform(
             post("/agendamentos")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""{"doadorId":"$doadorId","slotId":"$slotId"}""")
         )
-            .andExpect(status().isBadRequest)
-            .andExpect(jsonPath("$.erro").value("Doador inaptado: Intervalo mínimo entre doações não respeitado."))
+            .andExpect(status().isUnprocessableContent)
+            .andExpect(jsonPath("$.apto").value(false))
+            .andExpect(jsonPath("$.motivo").value("Intervalo mínimo entre doações não cumprido"))
+            .andExpect(jsonPath("$.proximaDataPermitida").value("2036-01-09"))
     }
 
     @Test

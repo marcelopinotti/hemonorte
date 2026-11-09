@@ -1,0 +1,80 @@
+### Hemonorte API — autenticação e autorização
+@baseUrl = http://localhost:8080
+@adminPassword = INFORME_A_SENHA_GERADA_NO_LOG
+@cpf = 12345678901
+@doadorPassword = SenhaSegura123
+
+### Saúde pública
+GET {{baseUrl}}/actuator/health
+
+### Login ADMIN
+POST {{baseUrl}}/auth/login/funcionario
+Content-Type: application/json
+
+{"matricula":"admin","senha":"{{adminPassword}}"}
+
+> {% client.global.set("adminToken", response.body.token); %}
+
+### Cadastro público de doador
+POST {{baseUrl}}/api/doador
+Content-Type: application/json
+
+{
+  "nome": "João Doador",
+  "email": "joao.jwt@hemonorte.test",
+  "cpf": "{{cpf}}",
+  "senha": "{{doadorPassword}}",
+  "tipagem": "O+",
+  "dataNascimento": "1990-05-20",
+  "genero": "M"
+}
+
+### Login doador
+POST {{baseUrl}}/auth/login/doador
+Content-Type: application/json
+
+{"cpf":"{{cpf}}","senha":"{{doadorPassword}}"}
+
+> {% client.global.set("doadorToken", response.body.token); %}
+
+### Dados próprios do doador
+GET {{baseUrl}}/api/doador/me
+Authorization: Bearer {{doadorToken}}
+
+### Agendamentos próprios
+GET {{baseUrl}}/api/doador/me/agendamentos
+Authorization: Bearer {{doadorToken}}
+
+### Gestão ADMIN
+GET {{baseUrl}}/api/funcionario
+Authorization: Bearer {{adminToken}}
+
+### Token ausente — esperado 401
+GET {{baseUrl}}/api/funcionario
+
+### Tipo/perfil sem permissão — esperado 403
+GET {{baseUrl}}/exames-sorologicos
+Authorization: Bearer {{doadorToken}}
+
+### Criar horário — somente ADMIN
+POST {{baseUrl}}/slots
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{"inicio":"2035-11-10T12:00:00Z","capacidade":5}
+
+### Consultar ocupação e vagas — período exige offset
+# Resposta inclui capacidade, ocupacao e vagasDisponiveis; slots lotados retornam com zero vagas.
+GET {{baseUrl}}/slots?inicio=2035-11-10T00:00:00-03:00&fim=2035-11-11T00:00:00-03:00
+
+### Consultar pré-avaliação acadêmica de aptidão — esperado 200
+# Retorna apto, motivo e proximaDataPermitida. Não substitui triagem presencial.
+GET {{baseUrl}}/doadores/{{doadorId}}/aptidao
+Authorization: Bearer {{doadorToken}}
+
+### Reservar horário — esperado 201; se inapto, 422 com motivo e próxima data
+POST {{baseUrl}}/agendamentos
+Authorization: Bearer {{doadorToken}}
+Content-Type: application/json
+
+{"slotId":"{{slotId}}"}

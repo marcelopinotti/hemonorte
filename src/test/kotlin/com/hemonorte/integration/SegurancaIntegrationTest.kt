@@ -182,6 +182,16 @@ class SegurancaIntegrationTest {
                 .bearer(tokenTriagem)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""{"inicio":"${Instant.now().plusSeconds(86400)}","capacidade":4}"""),
+        ).andExpect(status().isForbidden)
+
+        val admin = funcionarioRepository.saveAndFlush(funcionario("ADM-SLOT", PerfilFuncionario.ADMIN))
+        val tokenAdmin = jwtService.gerarToken(admin.id, "FUNCIONARIO", admin.perfil)
+
+        mockMvc.perform(
+            post("/slots")
+                .bearer(tokenAdmin)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"inicio":"${Instant.now().plusSeconds(172800)}","capacidade":4}"""),
         ).andExpect(status().isCreated)
 
         mockMvc.perform(get("/exames-sorologicos").bearer(tokenTriagem))

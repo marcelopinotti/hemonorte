@@ -1,4 +1,3 @@
-
 package com.hemonorte.controller
 
 import com.hemonorte.dto.CriarSlotRequest
@@ -10,38 +9,43 @@ import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.access.prepost.PreAuthorize
-import org.springframework.web.bind.annotation.*
-import java.time.LocalDateTime
-import java.time.ZoneId
+import org.springframework.web.bind.annotation.DeleteMapping
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.PutMapping
+import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
+import org.springframework.web.bind.annotation.ResponseStatus
+import org.springframework.web.bind.annotation.RestController
+import java.time.OffsetDateTime
+import java.util.UUID
 
 @RestController
 @RequestMapping("/slots")
 class SlotAgendaController(
-    private val slotAgendaService: SlotAgendaService
+    private val slotAgendaService: SlotAgendaService,
 ) {
+
     @PostMapping
-    @PreAuthorize("hasAnyRole('TRIAGEM', 'ADMIN')")
-    fun criarSlot(@RequestBody @Valid request: CriarSlotRequest): ResponseEntity<SlotAgenda> {
-        val slot = slotAgendaService.criarSlot(request.inicio, request.capacidade)
-        return ResponseEntity.status(HttpStatus.CREATED).body(slot)
-    }
+    @PreAuthorize("hasRole('ADMIN')")
+    fun criarSlot(@RequestBody @Valid request: CriarSlotRequest): ResponseEntity<SlotAgenda> =
+        ResponseEntity.status(HttpStatus.CREATED)
+            .body(slotAgendaService.criarSlot(request.inicio, request.capacidade))
 
     @GetMapping
     fun listarPorPeriodo(
-        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) inicio: LocalDateTime,
-        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) fim: LocalDateTime
-    ): ResponseEntity<List<SlotDisponibilidadeResponse>> {
-        val instantInicio = inicio.atZone(ZoneId.systemDefault()).toInstant()
-        val instantFim = fim.atZone(ZoneId.systemDefault()).toInstant()
-
-        val slots = slotAgendaService.listarPorPeriodo(instantInicio, instantFim)
-        return ResponseEntity.ok(slots)
-    }
+        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) inicio: OffsetDateTime,
+        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) fim: OffsetDateTime,
+    ): ResponseEntity<List<SlotDisponibilidadeResponse>> = ResponseEntity.ok(
+        slotAgendaService.listarPorPeriodo(inicio.toInstant(), fim.toInstant()),
+    )
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('TRIAGEM', 'ADMIN')")
+    @PreAuthorize("hasRole('ADMIN')")
     fun atualizarSlot(
-        @PathVariable id: java.util.UUID,
+        @PathVariable id: UUID,
         @RequestBody @Valid request: CriarSlotRequest,
     ): ResponseEntity<SlotAgenda> = ResponseEntity.ok(
         slotAgendaService.atualizar(id, request.inicio, request.capacidade),
@@ -49,6 +53,6 @@ class SlotAgendaController(
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @PreAuthorize("hasAnyRole('TRIAGEM', 'ADMIN')")
-    fun excluirSlot(@PathVariable id: java.util.UUID) = slotAgendaService.excluir(id)
+    @PreAuthorize("hasRole('ADMIN')")
+    fun excluirSlot(@PathVariable id: UUID) = slotAgendaService.excluir(id)
 }

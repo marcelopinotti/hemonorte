@@ -17,18 +17,27 @@ class SlotAgenda(
 
     @Id
     val id: UUID = UUID.randomUUID(),
+    referencia: Instant = Instant.now(),
 ) {
 
     @Column(nullable = false, unique = true)
-    var inicio: Instant = validarInicio(inicio)
+    var inicio: Instant = validarInicio(inicio, referencia)
         protected set
 
     @Column(nullable = false)
     var capacidade: Int = validarCapacidade(capacidade)
         protected set
 
-    fun atualizar(novoInicio: Instant, novaCapacidade: Int) {
-        inicio = validarInicio(novoInicio)
+    fun atualizar(
+        novoInicio: Instant,
+        novaCapacidade: Int,
+        ocupacao: Long = 0,
+        referencia: Instant = Instant.now(),
+    ) {
+        require(novaCapacidade.toLong() >= ocupacao) {
+            "Capacidade não pode ser menor que as reservas pendentes"
+        }
+        inicio = validarInicio(novoInicio, referencia)
         capacidade = validarCapacidade(novaCapacidade)
     }
 
@@ -45,8 +54,8 @@ class SlotAgenda(
 
     private companion object {
 
-        fun validarInicio(valor: Instant): Instant {
-            require(valor.isAfter(Instant.now())) { "O início do slot deve ser uma data futura" }
+        fun validarInicio(valor: Instant, referencia: Instant): Instant {
+            require(valor.isAfter(referencia)) { "O início do slot deve ser uma data futura" }
             return valor
         }
 

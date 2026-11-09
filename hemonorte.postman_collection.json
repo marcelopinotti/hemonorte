@@ -1,0 +1,224 @@
+{
+  "info": {
+    "_postman_id": "9fcacbc9-dab1-4c76-a693-613967787c51",
+    "name": "Hemonorte API - Sequência de testes",
+    "description": "Informe adminPassword com a senha gerada no log e execute em ordem. A collection autentica o ADMIN e envia Bearer JWT nas rotas protegidas.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{adminToken}}", "type": "string" }]
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080", "type": "string" },
+    { "key": "runId", "value": "20261025-01", "type": "string" },
+    { "key": "cpf", "value": "12345678901", "type": "string" },
+    { "key": "slotInicio", "value": "2035-11-10T14:00:00Z", "type": "string" },
+    { "key": "adminPassword", "value": "INFORME_A_SENHA_GERADA_NO_LOG", "type": "string" },
+    { "key": "adminToken", "value": "", "type": "string" },
+    { "key": "doadorToken", "value": "", "type": "string" },
+    { "key": "funcionarioId", "value": "", "type": "string" },
+    { "key": "doadorId", "value": "", "type": "string" },
+    { "key": "slotId", "value": "", "type": "string" },
+    { "key": "agendamentoId", "value": "", "type": "string" },
+    { "key": "bolsaId", "value": "", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "00 - Login ADMIN",
+      "auth": { "type": "noauth" },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));", "if (pm.response.code === 200) pm.collectionVariables.set('adminToken', pm.response.json().token);"] } }],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"matricula\": \"admin\",\n  \"senha\": \"{{adminPassword}}\"\n}", "options": { "raw": { "language": "json" } } },
+        "url": "{{baseUrl}}/auth/login/funcionario"
+      }
+    },
+    {
+      "name": "01 - Saúde da aplicação",
+      "auth": { "type": "noauth" },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"] } }],
+      "request": { "method": "GET", "header": [{ "key": "Accept", "value": "application/json" }], "url": "{{baseUrl}}/actuator/health" }
+    },
+    {
+      "name": "02 - Cadastrar funcionário",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status 201', () => pm.response.to.have.status(201));", "if (pm.response.code === 201) pm.collectionVariables.set('funcionarioId', pm.response.json().id);"] } }],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Accept", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"matricula\": \"LAB-{{runId}}\",\n  \"nome\": \"Maria Laboratório\",\n  \"email\": \"maria.{{runId}}@hemonorte.test\",\n  \"senha\": \"SenhaSegura123\",\n  \"perfil\": \"LABORATORIO\"\n}", "options": { "raw": { "language": "json" } } },
+        "url": "{{baseUrl}}/api/funcionario"
+      }
+    },
+    {
+      "name": "03 - Buscar funcionário",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"] } }],
+      "request": { "method": "GET", "header": [{ "key": "Accept", "value": "application/json" }], "url": "{{baseUrl}}/api/funcionario/{{funcionarioId}}" }
+    },
+    {
+      "name": "04 - Atualizar funcionário",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"] } }],
+      "request": {
+        "method": "PUT",
+        "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Accept", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"nome\": \"Maria da Silva\",\n  \"email\": \"maria.atualizada.{{runId}}@hemonorte.test\",\n  \"perfil\": \"TRIAGEM\"\n}", "options": { "raw": { "language": "json" } } },
+        "url": "{{baseUrl}}/api/funcionario/{{funcionarioId}}"
+      }
+    },
+    {
+      "name": "05 - Alterar senha do funcionário",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status 204', () => pm.response.to.have.status(204));"] } }],
+      "request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"senha\": \"NovaSenhaSegura123\"\n}", "options": { "raw": { "language": "json" } } }, "url": "{{baseUrl}}/api/funcionario/{{funcionarioId}}/senha" }
+    },
+    {
+      "name": "06 - Listar funcionários",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"] } }],
+      "request": { "method": "GET", "header": [{ "key": "Accept", "value": "application/json" }], "url": "{{baseUrl}}/api/funcionario" }
+    },
+    {
+      "name": "07 - Cadastrar doador",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status 201', () => pm.response.to.have.status(201));", "if (pm.response.code === 201) pm.collectionVariables.set('doadorId', pm.response.json().id);"] } }],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Accept", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"nome\": \"João Doador\",\n  \"email\": \"joao.{{runId}}@hemonorte.test\",\n  \"cpf\": \"{{cpf}}\",\n  \"senha\": \"SenhaSegura123\",\n  \"tipagem\": \"O+\",\n  \"dataNascimento\": \"1990-05-20\",\n  \"genero\": \"M\"\n}", "options": { "raw": { "language": "json" } } },
+        "url": "{{baseUrl}}/api/doador"
+      }
+    },
+    {
+      "name": "08 - Buscar doador",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"] } }],
+      "request": { "method": "GET", "header": [{ "key": "Accept", "value": "application/json" }], "url": "{{baseUrl}}/api/doador/{{doadorId}}" }
+    },
+    {
+      "name": "09 - Atualizar doador",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"] } }],
+      "request": {
+        "method": "PUT",
+        "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Accept", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"nome\": \"João Doador Atualizado\",\n  \"email\": \"joao.atualizado.{{runId}}@hemonorte.test\",\n  \"tipagem\": \"O+\",\n  \"dataNascimento\": \"1990-05-20\",\n  \"genero\": \"M\"\n}", "options": { "raw": { "language": "json" } } },
+        "url": "{{baseUrl}}/api/doador/{{doadorId}}"
+      }
+    },
+    {
+      "name": "10 - Alterar senha do doador",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status 204', () => pm.response.to.have.status(204));"] } }],
+      "request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"senha\": \"NovaSenhaSegura123\"\n}", "options": { "raw": { "language": "json" } } }, "url": "{{baseUrl}}/api/doador/{{doadorId}}/senha" }
+    },
+    {
+      "name": "11 - Listar doadores",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"] } }],
+      "request": { "method": "GET", "header": [{ "key": "Accept", "value": "application/json" }], "url": "{{baseUrl}}/api/doador" }
+    },
+    {
+      "name": "12 - Verificar aptidão",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));", "pm.test('Retorna decisão de aptidão', () => pm.expect(pm.response.json()).to.have.property('apto'));"] } }],
+      "request": { "method": "GET", "header": [{ "key": "Accept", "value": "application/json" }], "url": "{{baseUrl}}/doadores/{{doadorId}}/aptidao" }
+    },
+    {
+      "name": "13 - Criar slot",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status 201', () => pm.response.to.have.status(201));", "if (pm.response.code === 201) pm.collectionVariables.set('slotId', pm.response.json().id);"] } }],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Accept", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"inicio\": \"{{slotInicio}}\",\n  \"capacidade\": 1\n}", "options": { "raw": { "language": "json" } } },
+        "url": "{{baseUrl}}/slots"
+      }
+    },
+    {
+      "name": "14 - Listar slots no período",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"] } }],
+      "request": { "method": "GET", "header": [{ "key": "Accept", "value": "application/json" }], "url": "{{baseUrl}}/slots?inicio=2035-11-10T00:00:00-03:00&fim=2035-11-11T00:00:00-03:00" }
+    },
+    {
+      "name": "15 - Criar agendamento",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status 201', () => pm.response.to.have.status(201));", "if (pm.response.code === 201) pm.collectionVariables.set('agendamentoId', pm.response.json().id);"] } }],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Accept", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"doadorId\": \"{{doadorId}}\",\n  \"slotId\": \"{{slotId}}\"\n}", "options": { "raw": { "language": "json" } } },
+        "url": "{{baseUrl}}/agendamentos"
+      }
+    },
+    {
+      "name": "16 - Realizar triagem apta",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status 201', () => pm.response.to.have.status(201));", "pm.test('Triagem aprovada', () => pm.expect(pm.response.json().apto).to.eql(true));"] } }],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Accept", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"agendamentoId\": \"{{agendamentoId}}\",\n  \"peso\": 75.50,\n  \"tatuagemRecente\": false,\n  \"cirurgiaRecente\": false,\n  \"teveFebre\": false,\n  \"funcionarioId\": \"{{funcionarioId}}\"\n}", "options": { "raw": { "language": "json" } } },
+        "url": "{{baseUrl}}/triagens"
+      }
+    },
+    {
+      "name": "17 - Buscar triagem",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"] } }],
+      "request": { "method": "GET", "header": [{ "key": "Accept", "value": "application/json" }], "url": "{{baseUrl}}/triagens/agendamento/{{agendamentoId}}" }
+    },
+    {
+      "name": "18 - Definir estoque mínimo",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"] } }],
+      "request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Accept", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"tipagem\": \"O+\",\n  \"quantidadeCritica\": 5\n}", "options": { "raw": { "language": "json" } } }, "url": "{{baseUrl}}/estoque/minimos" }
+    },
+    {
+      "name": "19 - Listar estoques críticos",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));", "pm.test('O+ está crítico', () => pm.expect(pm.response.json().some(item => item.tipagem === 'O+')).to.eql(true));"] } }],
+      "request": { "method": "GET", "header": [{ "key": "Accept", "value": "application/json" }], "url": "{{baseUrl}}/estoque/criticos" }
+    },
+    {
+      "name": "20 - Criar bolsa de sangue",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status 201', () => pm.response.to.have.status(201));", "if (pm.response.code === 201) pm.collectionVariables.set('bolsaId', pm.response.json().id);"] } }],
+      "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"agendamentoId\": \"{{agendamentoId}}\",\n  \"tipagem\": \"O+\",\n  \"dataColeta\": \"2035-11-10\",\n  \"dataValidade\": \"2035-12-20\"\n}", "options": { "raw": { "language": "json" } } }, "url": "{{baseUrl}}/estoque" }
+    },
+    {
+      "name": "21 - Registrar exame sorológico",
+      "event": [
+        { "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status 201', () => pm.response.to.have.status(201));", "pm.test('Resultado aprovado', () => pm.expect(pm.response.json().resultadoFinal).to.eql('APROVADO'));"] } }
+      ],
+      "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Accept", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"bolsaId\": \"{{bolsaId}}\",\n  \"hiv\": \"NEGATIVO\",\n  \"hepatite\": \"NEGATIVO\",\n  \"chagas\": \"NEGATIVO\"\n}", "options": { "raw": { "language": "json" } } }, "url": "{{baseUrl}}/exames-sorologicos" }
+    },
+    {
+      "name": "22 - Buscar exame pela bolsa",
+      "event": [
+        { "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"] } }
+      ],
+      "request": { "method": "GET", "header": [{ "key": "Accept", "value": "application/json" }], "url": "{{baseUrl}}/exames-sorologicos/bolsa/{{bolsaId}}" }
+    },
+    {
+      "name": "22 - Cancelar agendamento",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));", "pm.test('Agendamento cancelado', () => pm.expect(pm.response.json().status).to.eql('CANCELADO'));"] } }],
+      "request": { "method": "PATCH", "header": [{ "key": "Accept", "value": "application/json" }], "url": "{{baseUrl}}/agendamentos/{{agendamentoId}}/cancelar" }
+    },
+    {
+      "name": "23 - Recusar segundo cancelamento",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status 400', () => pm.response.to.have.status(400));"] } }],
+      "request": { "method": "PATCH", "header": [{ "key": "Accept", "value": "application/json" }], "url": "{{baseUrl}}/agendamentos/{{agendamentoId}}/cancelar" }
+    },
+    {
+      "name": "24 - Recusar CPF duplicado",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status 409', () => pm.response.to.have.status(409));"] } }],
+      "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Accept", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"nome\": \"Outro Doador\",\n  \"email\": \"outro.{{runId}}@hemonorte.test\",\n  \"cpf\": \"{{cpf}}\",\n  \"senha\": \"SenhaSegura123\",\n  \"tipagem\": \"O+\",\n  \"dataNascimento\": \"1990-05-20\",\n  \"genero\": \"M\"\n}", "options": { "raw": { "language": "json" } } }, "url": "{{baseUrl}}/api/doador" }
+    },
+    {
+      "name": "25 - Buscar doador inexistente",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status 404', () => pm.response.to.have.status(404));"] } }],
+      "request": { "method": "GET", "header": [{ "key": "Accept", "value": "application/json" }], "url": "{{baseUrl}}/api/doador/00000000-0000-0000-0000-000000000000" }
+    },
+    {
+      "name": "26 - Recusar exclusão de doador com histórico",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status 409', () => pm.response.to.have.status(409));"] } }],
+      "request": { "method": "DELETE", "header": [], "url": "{{baseUrl}}/api/doador/{{doadorId}}" }
+    },
+    {
+      "name": "27 - Desativar funcionário",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status 204', () => pm.response.to.have.status(204));"] } }],
+      "request": { "method": "DELETE", "header": [], "url": "{{baseUrl}}/api/funcionario/{{funcionarioId}}" }
+    },
+    {
+      "name": "28 - Confirmar funcionário inativo",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));", "pm.test('Funcionário inativo', () => pm.expect(pm.response.json().ativo).to.eql(false));"] } }],
+      "request": { "method": "GET", "header": [{ "key": "Accept", "value": "application/json" }], "url": "{{baseUrl}}/api/funcionario/{{funcionarioId}}" }
+    }
+  ]
+}

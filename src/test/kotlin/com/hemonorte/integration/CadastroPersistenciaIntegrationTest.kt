@@ -12,6 +12,7 @@ import com.hemonorte.repository.AgendamentoRepository
 import com.hemonorte.repository.DoadorRepository
 import com.hemonorte.repository.FuncionarioRepository
 import com.hemonorte.repository.SlotAgendaRepository
+import com.hemonorte.service.AgendamentoService
 import com.hemonorte.service.JwtService
 import org.flywaydb.core.Flyway
 import org.junit.jupiter.api.BeforeEach
@@ -81,6 +82,9 @@ class CadastroPersistenciaIntegrationTest {
     lateinit var agendamentoRepository: AgendamentoRepository
 
     @Autowired
+    lateinit var agendamentoService: AgendamentoService
+
+    @Autowired
     lateinit var jwtService: JwtService
 
     lateinit var adminToken: String
@@ -107,16 +111,20 @@ class CadastroPersistenciaIntegrationTest {
     }
 
     @Test
-    fun `Flyway aplica V1 e V2 e o JPA valida o schema PostgreSQL`() {
+    fun `Flyway aplica todas as migrations e o JPA valida o schema PostgreSQL`() {
         val versoes = jdbcTemplate.queryForList(
             "SELECT version FROM flyway_schema_history WHERE success = true ORDER BY installed_rank",
             String::class.java,
         )
 
-        assertEquals(listOf("1", "2"), versoes)
+        assertEquals(listOf("1", "2", "3"), versoes)
         assertEquals(
             true,
             constraintValidada("ck_doador_data_nascimento_nao_futura", "public.doador"),
+        )
+        assertEquals(
+            true,
+            constraintValidada("slot_agenda_capacidade_positiva", "public.slot_agenda"),
         )
     }
 
@@ -144,7 +152,7 @@ class CadastroPersistenciaIntegrationTest {
                 "F",
             )
 
-            val resultadoV2 = flyway(schema).load().migrate()
+            val resultadoV2 = flyway(schema).target("2").load().migrate()
             assertEquals(1, resultadoV2.migrationsExecuted)
             assertEquals(
                 1,
@@ -159,6 +167,55 @@ class CadastroPersistenciaIntegrationTest {
             )
         } finally {
             jdbcTemplate.execute("DROP SCHEMA IF EXISTS \"$schema\" CASCADE")
+        }
+    }
+
+    @Test
+    fun `duas reservas concorrentes na ultima vaga criam somente um agendamento`() {
+        repeat(5) { tentativa ->
+            val slot = slotAgendaRepository.saveAndFlush(
+                SlotAgenda(Instant.now().plusSeconds(86_400 + tentativa.toLong()), 1),
+            )
+            val doadores = listOf(1, 2).map { numero ->
+                doadorRepository.saveAndFlush(
+                    Doador(
+                        nome = "Doador $tentativa-$numero",
+                        email = "doador-$tentativa-$numero@exemplo.local",
+                        senhaHash = "hash",
+                        tipagem = "O+",
+                        dataNascimento = LocalDate.of(1990, 1, 1),
+                        genero = 'M',
+                        cpf = "%011d".format(10_000L + tentativa * 10 + numero),
+                    ),
+                )
+            }
+            val executor = Executors.newFixedThreadPool(2)
+            val largada = CyclicBarrier(2)
+
+            try {
+                val resultados = doadores.map { doador ->
+                    executor.submit<String> {
+                        largada.await(10, TimeUnit.SECONDS)
+                        runCatching {
+                            agendamentoService.realizarAgendamento(doador.id, slot.id)
+                        }.fold(
+                            onSuccess = { "SUCESSO" },
+                            onFailure = { "${it::class.simpleName}: ${it.message}" },
+                        )
+                    }
+                }.map { it.get(30, TimeUnit.SECONDS) }
+
+                assertEquals(1, resultados.count { it == "SUCESSO" }, resultados.joinToString())
+                assertEquals(
+                    1,
+                    agendamentoRepository.countBySlotIdAndStatus(
+                        slot.id,
+                        com.hemonorte.model.enums.StatusAgendamento.PENDENTE,
+                    ),
+                )
+            } finally {
+                executor.shutdownNow()
+            }
         }
     }
 

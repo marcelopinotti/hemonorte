@@ -6,19 +6,13 @@ Este documento consolida a modelagem arquitetural, lógica e comportamental do s
 
 ## 1. Arquitetura em camadas
 
-Visão geral dos componentes da aplicação e do fluxo entre cliente, API e banco de dados.
-
 ![Arquitetura em camadas](modelagem/arquitetura-em-camadas.png)
 
 ## 2. Modelo lógico do banco de dados
 
-Entidades persistidas, atributos, chaves e cardinalidades do banco de dados.
-
 ![Modelo lógico do banco de dados](modelagem/modelo-logico-banco.png)
 
 ## 3. Diagrama de classes
-
-Classes de domínio, enumerações, atributos, operações e associações implementadas no projeto.
 
 ![Diagrama de classes](diagrama-de-classes.png)
 
@@ -26,6 +20,32 @@ O vínculo entre `EstoqueMinimo` e `BolsaSangue` é conceitual, feito pela tipag
 
 ## 4. Diagrama de sequência do agendamento
 
-Fluxo de validação da aptidão do doador, consulta de vaga e criação do agendamento.
+```mermaid
+sequenceDiagram
+    actor Doador
+    participant SlotController
+    participant SlotService
+    participant AgendamentoController
+    participant AgendamentoService
+    participant AptidaoService
+    participant AgendamentoRepository
 
-![Diagrama de sequência do agendamento](modelagem/diagrama-sequencia-agendamento.png)
+    Doador->>SlotController: GET /slots?inicio&fim (com offset)
+    SlotController->>SlotService: listarPorPeriodo(inicio, fim)
+    SlotService->>AgendamentoRepository: contar PENDENTE por slot
+    SlotService-->>Doador: horários, ocupação e vagas
+
+    Doador->>AgendamentoController: POST /agendamentos
+    AgendamentoController->>AgendamentoService: realizarAgendamento(doadorId, slotId)
+    AgendamentoService->>AptidaoService: verificarAptidao(doador)
+    AptidaoService->>AgendamentoRepository: buscar histórico CONCLUIDO
+    Note over AptidaoService: avaliar intervalo e limite móvel de 365 dias<br/>em America/Fortaleza
+    alt impedimento calculável
+        AptidaoService-->>Doador: motivo e próxima data permitida
+    else apto e há vaga
+        AgendamentoService->>AgendamentoRepository: salvar PENDENTE
+        AgendamentoRepository-->>Doador: 201 Created
+    end
+```
+
+Os parâmetros acadêmicos estão registrados em [Parâmetros da aptidão](parametros-clinicos-aptidao.md). A pré-avaliação não substitui a triagem presencial.

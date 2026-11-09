@@ -1,83 +1,124 @@
 package com.hemonorte.service
 
 import com.hemonorte.dto.SlotDisponibilidadeResponse
-import com.hemonorte.model.Agendamento
+import com.hemonorte.exception.ConflitoException
 import com.hemonorte.model.SlotAgenda
 import com.hemonorte.model.enums.StatusAgendamento
 import com.hemonorte.repository.AgendamentoRepository
 import com.hemonorte.repository.SlotAgendaRepository
 import org.junit.jupiter.api.Tag
 import org.mockito.Mockito
+import java.time.Clock
 import java.time.Instant
+import java.time.ZoneOffset
+import java.util.Optional
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
-import kotlin.test.assertTrue
 
 @Tag("unit")
 class SlotAgendaServiceTest {
 
     private val repository = Mockito.mock(SlotAgendaRepository::class.java)
     private val agendamentoRepository = Mockito.mock(AgendamentoRepository::class.java)
-    private val service = SlotAgendaService(repository, agendamentoRepository)
+    private val agora = Instant.parse("2035-11-10T10:00:00Z")
+    private val service = SlotAgendaService(
+        repository,
+        agendamentoRepository,
+        Clock.fixed(agora, ZoneOffset.UTC),
+    )
 
-    // Matcher do Mockito com cara de nao-nulo pro compilador Kotlin: o any() bruto devolve
-    // null em runtime e o check de parametro nao-nulo explode antes de alcancar o mock
-    // (pitfall registrado na rodada anterior). O "as T" unchecked deixa o null passar.
     @Suppress("UNCHECKED_CAST")
     private fun <T> qualquer(): T = Mockito.any() as T
 
     @Test
-    fun `cria slot com inicio futuro e persiste`() {
-        val inicio = Instant.now().plusSeconds(86_400)
-        Mockito.`when`(repository.existsByInicio(inicio)).thenReturn(false)
-        Mockito.`when`(repository.save(qualquer())).thenAnswer { it.arguments[0] as SlotAgenda }
-
-        val slot = service.criarSlot(inicio, 10)
-
-        assertEquals(inicio, slot.inicio)
-        assertEquals(10, slot.capacidade)
-        Mockito.verify(repository).save(slot)
-    }
-
-    @Test
-    fun `rejeita inicio duplicado`() {
-        val inicio = Instant.now().plusSeconds(86_400)
-        Mockito.`when`(repository.existsByInicio(inicio)).thenReturn(true)
-
-        val erro = assertFailsWith<IllegalArgumentException> { service.criarSlot(inicio, 10) }
-        assertEquals("Já existe um slot cadastrado para este horário", erro.message)
-    }
-
-    @Test
-    fun `rejeita inicio no passado - guarda temporal da entidade`() {
-        // O bloqueio vive na entidade (SlotAgenda exige inicio futuro na construcao) e o
-        // service repassa - criterio da issue #8: nao criar horario no passado.
-        val passado = Instant.now().minusSeconds(86_400)
-        Mockito.`when`(repository.existsByInicio(passado)).thenReturn(false)
-
-        val erro = assertFailsWith<IllegalArgumentException> { service.criarSlot(passado, 10) }
-        assertTrue(erro.message!!.contains("data futura"))
-        Mockito.verify(repository, Mockito.never()).save(qualquer())
-    }
-
-    @Test
-    fun `consulta por periodo calcula vagas e omite slots lotados`() {
-        val de = Instant.now().plusSeconds(3_600)
-        val ate = de.plusSeconds(86_400)
-        val parcial = SlotAgenda(de, 5)
-        val lotado = SlotAgenda(de.plusSeconds(3_600), 5)
-        Mockito.`when`(repository.findByInicioBetween(de, ate)).thenReturn(listOf(parcial, lotado))
+    fun `consulta inclui slot lotado com zero vagas`() {
+        val inicio = Instant.parse("2035-11-10T12:00:00Z")
+        val fim = Instant.parse("2035-11-11T12:00:00Z")
+        val lotado = SlotAgenda(inicio, 2)
         Mockito.`when`(
-            agendamentoRepository.findBySlotIdAndStatus(parcial.id, StatusAgendamento.PENDENTE)
-        ).thenReturn(List(2) { Mockito.mock(Agendamento::class.java) })
+            repository.findByInicioGreaterThanEqualAndInicioLessThanOrderByInicioAsc(inicio, fim),
+        ).thenReturn(listOf(lotado))
         Mockito.`when`(
-            agendamentoRepository.findBySlotIdAndStatus(lotado.id, StatusAgendamento.PENDENTE)
-        ).thenReturn(List(5) { Mockito.mock(Agendamento::class.java) })
+            agendamentoRepository.countBySlotIdAndStatus(lotado.id, StatusAgendamento.PENDENTE),
+        ).thenReturn(2)
 
         assertEquals(
-            listOf(SlotDisponibilidadeResponse(parcial.id, de, 5, 3)),
-            service.listarPorPeriodo(de, ate)
+            listOf(
+                SlotDisponibilidadeResponse(
+                    id = lotado.id,
+                    inicio = inicio,
+                    capacidade = 2,
+                    ocupacao = 2,
+                    vagasDisponiveis = 0,
+                ),
+            ),
+            service.listarPorPeriodo(inicio, fim),
         )
+    }
+
+    @Test
+    fun `rejeita periodo sem duracao positiva`() {
+        val instante = Instant.parse("2035-11-10T12:00:00Z")
+
+        assertFailsWith<IllegalArgumentException> {
+            service.listarPorPeriodo(instante, instante)
+        }
+    }
+
+    @Test
+    fun `consulta respeita o periodo solicitado mesmo quando esta no passado`() {
+        val inicio = agora.minusSeconds(3_600)
+        val fim = agora.plusSeconds(3_600)
+        Mockito.`when`(
+            repository.findByInicioGreaterThanEqualAndInicioLessThanOrderByInicioAsc(inicio, fim),
+        ).thenReturn(emptyList())
+
+        service.listarPorPeriodo(inicio, fim)
+
+        Mockito.verify(repository)
+            .findByInicioGreaterThanEqualAndInicioLessThanOrderByInicioAsc(inicio, fim)
+    }
+
+    @Test
+    fun `criacao no instante atual e rejeitada`() {
+        Mockito.`when`(repository.existsByInicio(agora)).thenReturn(false)
+
+        assertFailsWith<IllegalArgumentException> { service.criarSlot(agora, 1) }
+    }
+
+    @Test
+    fun `rejeita reducao abaixo das reservas pendentes`() {
+        val slot = SlotAgenda(Instant.parse("2035-11-10T12:00:00Z"), 5)
+        Mockito.`when`(repository.findById(slot.id)).thenReturn(Optional.of(slot))
+        Mockito.`when`(
+            agendamentoRepository.countBySlotIdAndStatus(slot.id, StatusAgendamento.PENDENTE),
+        ).thenReturn(2)
+
+        assertFailsWith<ConflitoException> {
+            service.atualizar(slot.id, slot.inicio, 1)
+        }
+    }
+
+    @Test
+    fun `aceita capacidade igual as reservas pendentes`() {
+        val slot = SlotAgenda(Instant.parse("2035-11-10T12:00:00Z"), 5)
+        Mockito.`when`(repository.findById(slot.id)).thenReturn(Optional.of(slot))
+        Mockito.`when`(
+            agendamentoRepository.countBySlotIdAndStatus(slot.id, StatusAgendamento.PENDENTE),
+        ).thenReturn(2)
+        Mockito.`when`(repository.save(qualquer())).thenAnswer { it.arguments[0] as SlotAgenda }
+
+        val atualizado = service.atualizar(slot.id, slot.inicio, 2)
+
+        assertEquals(2, atualizado.capacidade)
+    }
+
+    @Test
+    fun `duplicidade usa conflito`() {
+        val inicio = Instant.parse("2035-11-10T12:00:00Z")
+        Mockito.`when`(repository.existsByInicio(inicio)).thenReturn(true)
+
+        assertFailsWith<ConflitoException> { service.criarSlot(inicio, 5) }
     }
 }

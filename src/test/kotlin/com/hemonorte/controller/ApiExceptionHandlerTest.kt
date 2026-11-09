@@ -16,24 +16,21 @@ import kotlin.test.Test
 class ApiExceptionHandlerTest {
 
     private val mockMvc: MockMvc = MockMvcBuilders
-        .standaloneSetup(RegraNegocioController())
+        .standaloneSetup(ExcecaoController())
         .setControllerAdvice(ApiExceptionHandler())
         .build()
 
     @Test
     fun `SENTINELA QA-044 - RegraNegocioException devolve 200 hoje em vez de status de erro`() {
-        // O handler nao declara @ResponseStatus, portanto uma regra de negocio serializada
-        // como erro ainda responde HTTP 200. Quando o mapeamento 422 for definido, inverter
-        // esta sentinela para a prova do contrato corrigido.
         mockMvc.perform(get("/regra-negocio").accept(MediaType.APPLICATION_JSON))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.erro").value("Regra de negócio não atendida"))
     }
 
     @RestController
-    private class RegraNegocioController {
+    private class ExcecaoController {
 
         @GetMapping("/regra-negocio")
-        fun executar(): ApiError = throw RegraNegocioException("Regra de negócio não atendida")
+        fun regraNegocio(): ApiError = throw RegraNegocioException("Regra de negócio não atendida")
     }
 }

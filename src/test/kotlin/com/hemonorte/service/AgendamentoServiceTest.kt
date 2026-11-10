@@ -11,6 +11,7 @@ import com.hemonorte.repository.DoadorRepository
 import com.hemonorte.repository.SlotAgendaRepository
 import org.junit.jupiter.api.Tag
 import org.mockito.Mockito
+import org.springframework.security.access.AccessDeniedException
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
@@ -104,6 +105,7 @@ class AgendamentoServiceTest {
         Mockito.verify(agendamentoRepository, Mockito.never())
             .countBySlotIdAndStatus(slot.id, StatusAgendamento.PENDENTE)
         Mockito.verify(agendamentoRepository, Mockito.never()).save(qualquer())
+        Mockito.verify(slotAgendaRepository, Mockito.never()).findById(slot.id)
     }
 
     @Test
@@ -129,6 +131,80 @@ class AgendamentoServiceTest {
             .thenAnswer { it.arguments[0] as Agendamento }
 
         assertEquals(StatusAgendamento.FALTOU, service.registrarFalta(agendamento.id).status)
+    }
+
+    @Test
+    fun `doador inexistente devolve nao encontrado`() {
+        Mockito.`when`(doadorRepository.findById(doador.id)).thenReturn(Optional.empty())
+
+        assertFailsWith<NoSuchElementException> { service.realizarAgendamento(doador.id, slot.id) }
+    }
+
+    @Test
+    fun `slot inexistente devolve nao encontrado`() {
+        prepararEntidades()
+        Mockito.`when`(slotAgendaRepository.findById(slot.id)).thenReturn(Optional.empty())
+
+        assertFailsWith<NoSuchElementException> { service.realizarAgendamento(doador.id, slot.id) }
+        Mockito.verify(agendamentoRepository, Mockito.never()).save(qualquer())
+    }
+
+    @Test
+    fun `slot em horario passado e rejeitado`() {
+        prepararEntidades()
+        val servicoNoFuturo = AgendamentoService(
+            agendamentoRepository,
+            doadorRepository,
+            slotAgendaRepository,
+            aptidaoService,
+            Clock.fixed(Instant.parse("2035-11-10T12:00:00Z"), ZoneOffset.UTC),
+        )
+
+        assertFailsWith<IllegalArgumentException> { servicoNoFuturo.realizarAgendamento(doador.id, slot.id) }
+        Mockito.verify(agendamentoRepository, Mockito.never()).save(qualquer())
+    }
+
+    @Test
+    fun `reserva ativa duplicada no mesmo slot usa conflito`() {
+        prepararEntidades()
+        Mockito.`when`(
+            agendamentoRepository.existsByDoadorIdAndSlotIdAndStatus(doador.id, slot.id, StatusAgendamento.PENDENTE),
+        ).thenReturn(true)
+
+        assertFailsWith<ConflitoException> { service.realizarAgendamento(doador.id, slot.id) }
+        Mockito.verify(agendamentoRepository, Mockito.never()).save(qualquer())
+    }
+
+    @Test
+    fun `agendamento inexistente devolve nao encontrado ao cancelar ou registrar falta`() {
+        val id = java.util.UUID.randomUUID()
+        Mockito.`when`(agendamentoRepository.findById(id)).thenReturn(Optional.empty())
+
+        assertFailsWith<NoSuchElementException> { service.cancelarAgendamento(id) }
+        assertFailsWith<NoSuchElementException> { service.registrarFalta(id) }
+    }
+
+    @Test
+    fun `doador nao cancela agendamento de outro doador`() {
+        val id = java.util.UUID.randomUUID()
+        val outroDoador = java.util.UUID.randomUUID()
+        Mockito.`when`(agendamentoRepository.findByIdAndDoadorId(id, outroDoador)).thenReturn(Optional.empty())
+
+        assertFailsWith<AccessDeniedException> { service.cancelarAgendamentoDoDoador(id, outroDoador) }
+    }
+
+    @Test
+    fun `transicoes repetidas sao rejeitadas`() {
+        val cancelado = Agendamento(doador, slot).also { it.cancelar() }
+        val faltou = Agendamento(doador, slot).also { it.registrarFalta() }
+        Mockito.`when`(agendamentoRepository.findById(cancelado.id)).thenReturn(Optional.of(cancelado))
+        Mockito.`when`(agendamentoRepository.findById(faltou.id)).thenReturn(Optional.of(faltou))
+
+        assertFailsWith<IllegalArgumentException> { service.cancelarAgendamento(cancelado.id) }
+        assertFailsWith<IllegalArgumentException> { service.registrarFalta(cancelado.id) }
+        assertFailsWith<IllegalArgumentException> { service.registrarFalta(faltou.id) }
+        assertFailsWith<IllegalArgumentException> { service.cancelarAgendamento(faltou.id) }
+        Mockito.verify(agendamentoRepository, Mockito.never()).save(qualquer())
     }
 
     private fun prepararEntidades() {

@@ -9,6 +9,7 @@ import com.hemonorte.repository.DoadorRepository
 import com.hemonorte.repository.SlotAgendaRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.Clock
 import java.util.UUID
 import com.hemonorte.dto.AgendamentoResponse
 import com.hemonorte.dto.toResponse
@@ -19,31 +20,33 @@ class AgendamentoService(
     private val agendamentoRepository: AgendamentoRepository,
     private val doadorRepository: DoadorRepository,
     private val slotAgendaRepository: SlotAgendaRepository,
-    private val aptidaoService: AptidaoService
+    private val aptidaoService: AptidaoService,
+    private val clock: Clock = Clock.systemUTC(),
 ) {
 
     @Transactional
     fun realizarAgendamento(doadorId: UUID, slotId: UUID): Agendamento {
         val doador = doadorRepository.findById(doadorId)
-            .orElseThrow { IllegalArgumentException("Doador não encontrado") }
+            .orElseThrow { NoSuchElementException("Doador não encontrado") }
 
-        val slot = slotAgendaRepository.findById(slotId)
-            .orElseThrow { IllegalArgumentException("Slot de agenda não encontrado") }
-
-        // Valida se o doador está apto para doar
         val resultadoAptidao = aptidaoService.verificarAptidao(doador)
         if (!resultadoAptidao.apto) {
             throw InaptidaoDoacaoException(resultadoAptidao)
         }
 
+        val slot = slotAgendaRepository.findById(slotId)
+            .orElseThrow { NoSuchElementException("Slot de agenda não encontrado") }
+        require(slot.inicio.isAfter(clock.instant())) { "Não é possível agendar em horário passado" }
+
+        if (agendamentoRepository.existsByDoadorIdAndSlotIdAndStatus(doadorId, slotId, StatusAgendamento.PENDENTE)) {
+            throw ConflitoException("Doador já possui reserva ativa neste horário")
+        }
         val ocupacao = agendamentoRepository.countBySlotIdAndStatus(slotId, StatusAgendamento.PENDENTE)
         if (ocupacao >= slot.capacidade.toLong()) {
             throw ConflitoException("Slot lotado para este horário")
         }
 
-        // Cria o agendamento
-        val agendamento = Agendamento(doador = doador, slot = slot)
-        return agendamentoRepository.save(agendamento)
+        return agendamentoRepository.save(Agendamento(doador = doador, slot = slot))
     }
 
     @Transactional
@@ -53,7 +56,7 @@ class AgendamentoService(
     @Transactional
     fun cancelarAgendamento(agendamentoId: UUID): Agendamento {
         val agendamento = agendamentoRepository.findById(agendamentoId)
-            .orElseThrow { IllegalArgumentException("Agendamento não encontrado") }
+            .orElseThrow { NoSuchElementException("Agendamento não encontrado") }
 
         agendamento.cancelar()
         return agendamentoRepository.save(agendamento)
@@ -106,7 +109,7 @@ class AgendamentoService(
     @Transactional
     fun registrarFalta(agendamentoId: UUID): Agendamento {
         val agendamento = agendamentoRepository.findById(agendamentoId)
-            .orElseThrow { IllegalArgumentException("Agendamento não encontrado") }
+            .orElseThrow { NoSuchElementException("Agendamento não encontrado") }
 
         agendamento.registrarFalta()
         return agendamentoRepository.save(agendamento)

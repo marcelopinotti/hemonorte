@@ -14,4 +14,5 @@ interface AgendamentoRepository : JpaRepository<Agendamento, UUID> {
     fun findByDoadorIdAndStatus(doadorId: UUID, status: StatusAgendamento): List<Agendamento>
     fun findBySlotIdAndStatus(slotId: UUID, status: StatusAgendamento): List<Agendamento>
     fun countBySlotIdAndStatus(slotId: UUID, status: StatusAgendamento): Long
+    fun existsByDoadorIdAndSlotIdAndStatus(doadorId: UUID, slotId: UUID, status: StatusAgendamento): Boolean
 }

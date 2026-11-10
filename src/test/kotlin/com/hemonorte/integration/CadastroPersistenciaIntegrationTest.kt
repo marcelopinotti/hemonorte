@@ -1,5 +1,6 @@
 package com.hemonorte.integration
 
+import com.hemonorte.exception.ConflitoException
 import com.hemonorte.TestcontainersConfiguration
 import com.hemonorte.dto.DoadorResponse
 import com.hemonorte.dto.FuncionarioResponse
@@ -117,7 +118,7 @@ class CadastroPersistenciaIntegrationTest {
             String::class.java,
         )
 
-        assertEquals(listOf("1", "2", "3"), versoes)
+        assertEquals(listOf("1", "2", "3", "4"), versoes)
         assertEquals(
             true,
             constraintValidada("ck_doador_data_nascimento_nao_futura", "public.doador"),
@@ -216,6 +217,34 @@ class CadastroPersistenciaIntegrationTest {
             } finally {
                 executor.shutdownNow()
             }
+        }
+    }
+
+    @Test
+    fun `cancelamento libera vaga e banco impede reserva ativa duplicada`() {
+        val slot = slotAgendaRepository.saveAndFlush(SlotAgenda(Instant.now().plusSeconds(86_400), 1))
+        val (primeiro, segundo) = listOf(1, 2).map { numero ->
+            doadorRepository.saveAndFlush(
+                Doador(
+                    nome = "Doador Vaga $numero",
+                    email = "vaga-$numero@exemplo.local",
+                    senhaHash = "hash",
+                    tipagem = "O+",
+                    dataNascimento = LocalDate.of(1990, 1, 1),
+                    genero = 'M',
+                    cpf = "%011d".format(20_000L + numero),
+                ),
+            )
+        }
+
+        val reserva = agendamentoService.realizarAgendamento(primeiro.id, slot.id)
+        assertFailsWith<ConflitoException> { agendamentoService.realizarAgendamento(segundo.id, slot.id) }
+
+        agendamentoService.cancelarAgendamentoDoDoador(reserva.id, primeiro.id)
+        agendamentoService.realizarAgendamento(segundo.id, slot.id)
+
+        assertFailsWith<DataIntegrityViolationException> {
+            agendamentoRepository.saveAndFlush(Agendamento(segundo, slot))
         }
     }
 

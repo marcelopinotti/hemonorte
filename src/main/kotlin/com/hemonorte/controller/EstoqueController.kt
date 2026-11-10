@@ -56,6 +56,10 @@ class EstoqueController(
         return ResponseEntity.ok(estoqueMinimo)
     }
 
+    @GetMapping("/disponiveis")
+    @PreAuthorize("hasAnyRole('COLETA', 'LABORATORIO', 'ADMIN')")
+    fun disponiveisPorTipagem(): Map<String, Long> = estoqueService.disponiveisPorTipagem()
+
     @GetMapping("/criticos")
     @PreAuthorize("hasAnyRole('COLETA', 'LABORATORIO', 'ADMIN')")
     fun listarEstoquesCriticos(): ResponseEntity<List<EstoqueMinimo>> {

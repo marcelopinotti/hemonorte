@@ -140,6 +140,56 @@ class TriagemIntegrationTest {
     }
 
     @Test
+    fun `jornada apta gera comprovante libera bolsa no estoque e bloqueia nova reserva pelo intervalo`() {
+        val (_, triador) = tokenDe(PerfilFuncionario.TRIAGEM)
+        val (_, coleta) = tokenDe(PerfilFuncionario.COLETA)
+        val (_, laboratorio) = tokenDe(PerfilFuncionario.LABORATORIO)
+        val tokenDoador = jwtService.gerarToken(doador.id, "DOADOR")
+        val agora = Instant.now()
+        val slotDeHoje = slotAgendaRepository.saveAndFlush(
+            SlotAgenda(agora.minusSeconds(60), 5, referencia = agora.minusSeconds(120)),
+        )
+        agendamento = agendamentoRepository.saveAndFlush(Agendamento(doador, slotDeHoje))
+        val corpoColeta =
+            """{"agendamentoId":"${agendamento.id}","tipagem":"O+","dataColeta":"${LocalDate.now()}","dataValidade":"${LocalDate.now().plusDays(35)}"}"""
+
+        triagem(triador).andExpect(status().isCreated)
+        val bolsaId = mockMvc.perform(
+            post("/coletas").bearer(coleta).contentType(MediaType.APPLICATION_JSON).content(corpoColeta),
+        )
+            .andExpect(status().isCreated)
+            .andExpect(jsonPath("$.status").value("EM_ANALISE"))
+            .andReturn().response.contentAsString.let { Regex("\"id\":\"([^\"]+)\"").find(it)!!.groupValues[1] }
+
+        mockMvc.perform(post("/coletas").bearer(coleta).contentType(MediaType.APPLICATION_JSON).content(corpoColeta))
+            .andExpect(status().isConflict)
+        assertEquals(1, bolsaSangueRepository.count())
+
+        mockMvc.perform(get("/agendamentos/{id}", agendamento.id).bearer(tokenDoador))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.status").value("CONCLUIDO"))
+            .andExpect(jsonPath("$.codigoComprovante").isNotEmpty)
+
+        mockMvc.perform(
+            post("/exames-sorologicos").bearer(laboratorio).contentType(MediaType.APPLICATION_JSON)
+                .content("""{"bolsaId":"$bolsaId","hiv":"NEGATIVO","hepatite":"NEGATIVO","chagas":"NEGATIVO"}"""),
+        ).andExpect(status().isCreated)
+
+        mockMvc.perform(get("/estoque/disponiveis").bearer(laboratorio))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$['O+']").value(1))
+            .andExpect(jsonPath("$['A-']").value(0))
+
+        val proximoSlot = slotAgendaRepository.saveAndFlush(SlotAgenda(Instant.now().plusSeconds(86_400 * 3), 5))
+        mockMvc.perform(
+            post("/agendamentos").bearer(tokenDoador).contentType(MediaType.APPLICATION_JSON)
+                .content("""{"slotId":"${proximoSlot.id}"}"""),
+        )
+            .andExpect(status().isUnprocessableContent)
+            .andExpect(jsonPath("$.motivo").value("Intervalo mínimo entre doações não cumprido"))
+    }
+
+    @Test
     fun `entradas invalidas e vinculos inexistentes sao rejeitados`() {
         val (_, triador) = tokenDe(PerfilFuncionario.TRIAGEM)
 

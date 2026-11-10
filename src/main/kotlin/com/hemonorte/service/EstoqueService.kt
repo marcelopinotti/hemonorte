@@ -1,15 +1,18 @@
 package com.hemonorte.service
 
 import com.hemonorte.model.EstoqueMinimo
+import com.hemonorte.repository.BolsaSangueRepository
 import com.hemonorte.repository.EstoqueMinimoRepository
-import com.hemonorte.repository.ExameSorologicoRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.Clock
+import java.time.LocalDate
 
 @Service
 class EstoqueService(
     private val estoqueMinimoRepository: EstoqueMinimoRepository,
-    private val exameSorologicoRepository: ExameSorologicoRepository
+    private val bolsaSangueRepository: BolsaSangueRepository,
+    private val clock: Clock = Clock.systemUTC(),
 ) {
 
     @Transactional
@@ -24,18 +27,22 @@ class EstoqueService(
         return estoqueMinimoRepository.save(estoqueMinimo)
     }
 
+    @Transactional(readOnly = true)
+    fun disponiveisPorTipagem(): Map<String, Long> {
+        val contagem = bolsaSangueRepository.contarDisponiveisPorTipagem(LocalDate.now(clock))
+            .associate { (tipagem, total) -> tipagem as String to total as Long }
+        return TIPAGENS.associateWith { contagem[it] ?: 0L }
+    }
+
+    @Transactional(readOnly = true)
     fun listarEstoquesCriticos(): List<EstoqueMinimo> {
-        // Aqui podemos listar os itens que estão abaixo do limite crítico comparando com as bolsas aprovadas disponíveis
-        val todosMinimos = estoqueMinimoRepository.findAll()
-        return todosMinimos.filter { minimo ->
-            val quantidadeAtual = calcularBolsasAprovadasPorTipagem(minimo.tipagem)
-            quantidadeAtual <= minimo.quantidadeCritica
+        val disponiveis = disponiveisPorTipagem()
+        return estoqueMinimoRepository.findAll().filter { minimo ->
+            (disponiveis[minimo.tipagem] ?: 0L) <= minimo.quantidadeCritica
         }
     }
 
-    private fun calcularBolsasAprovadasPorTipagem(tipagem: String): Int {
-        // Lógica para contar bolsas aprovadas com base nos exames sorológicos e coleta
-        // Retorna a contagem atual no estoque
-        return 0 // Ajustaremos conforme a consulta exata das bolsas aprovadas
+    private companion object {
+        val TIPAGENS = listOf("A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-")
     }
 }

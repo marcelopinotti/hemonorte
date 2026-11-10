@@ -42,3 +42,12 @@ Content-Type: application/json
 ```
 
 A pré-avaliação automatizada não substitui a triagem presencial.
+
+## Triagem presencial
+
+`POST /triagens` recebe peso e indicadores; `apto` e `motivoInaptidao` são calculados pela entidade `Triagem` e qualquer valor enviado pelo cliente é ignorado.
+
+- peso mínimo: 50 kg, inclusivo; peso deve ser positivo, com até 3 dígitos inteiros e 2 decimais;
+- impedimentos: tatuagem recente, cirurgia recente e febre recente, informados como booleanos pelo funcionário;
+- “recente” ainda não tem janela temporal definida no sistema: o julgamento é do profissional de triagem. Qualquer definição (ex.: meses desde a tatuagem ou cirurgia) deve ser validada com os responsáveis clínicos antes de alterar ou ampliar os critérios;
+- triagem inapta impede a coleta: `POST /coletas` exige triagem apta e não gera bolsa nem comprovante.

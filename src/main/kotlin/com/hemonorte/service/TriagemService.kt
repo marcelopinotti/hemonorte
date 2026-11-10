@@ -1,10 +1,12 @@
 package com.hemonorte.service
 
+import com.hemonorte.exception.ConflitoException
 import com.hemonorte.model.Triagem
 import com.hemonorte.model.enums.StatusAgendamento
 import com.hemonorte.repository.AgendamentoRepository
 import com.hemonorte.repository.FuncionarioRepository
 import com.hemonorte.repository.TriagemRepository
+import org.springframework.security.access.AccessDeniedException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
@@ -26,37 +28,30 @@ class TriagemService(
         teveFebre: Boolean,
         funcionarioId: UUID
     ): Triagem {
+        val funcionario = funcionarioRepository.findById(funcionarioId)
+            .orElseThrow { AccessDeniedException("Acesso negado") }
+        if (!funcionario.ativo) throw AccessDeniedException("Acesso negado")
 
         val agendamento = agendamentoRepository.findById(agendamentoId)
-            .orElseThrow { IllegalArgumentException("Agendamento não encontrado") }
+            .orElseThrow { NoSuchElementException("Agendamento não encontrado") }
 
-        val funcionario = funcionarioRepository.findById(funcionarioId)
-            .orElseThrow { IllegalArgumentException("Funcionário não encontrado") }
-
-        require(agendamento.status == StatusAgendamento.PENDENTE) {
-            "Não é possível realizar triagem para um agendamento com status: ${agendamento.status}"
+        if (agendamento.status != StatusAgendamento.PENDENTE) {
+            throw ConflitoException("Não é possível realizar triagem para um agendamento com status: ${agendamento.status}")
+        }
+        if (triagemRepository.existsByAgendamentoId(agendamentoId)) {
+            throw ConflitoException("Já existe uma triagem registrada para este agendamento")
         }
 
-        require(!triagemRepository.existsByAgendamentoId(agendamentoId)) {
-            "Já existe uma triagem registrada para este agendamento"
-        }
-
-        val triagem = Triagem(
-            agendamento,
-            funcionario,
-            peso,
-            tatuagemRecente,
-            cirurgiaRecente,
-            teveFebre
+        return triagemRepository.saveAndFlush(
+            Triagem(agendamento, funcionario, peso, tatuagemRecente, cirurgiaRecente, teveFebre),
         )
-
-        return triagemRepository.save(triagem)
     }
 
-    fun buscarPorAgendamento(agendamentoId: UUID): Triagem {
-        return triagemRepository.findByAgendamentoId(agendamentoId)
-            .orElseThrow { IllegalArgumentException("Triagem não encontrada para este agendamento") }
-    }
+    @Transactional(readOnly = true)
+    fun buscarPorAgendamento(agendamentoId: UUID): Triagem =
+        triagemRepository.findByAgendamentoId(agendamentoId)
+            .orElseThrow { NoSuchElementException("Triagem não encontrada para este agendamento") }
 
+    @Transactional(readOnly = true)
     fun listar(): List<Triagem> = triagemRepository.findAll()
 }

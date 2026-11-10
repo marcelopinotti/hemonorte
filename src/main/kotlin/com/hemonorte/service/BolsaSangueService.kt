@@ -1,9 +1,12 @@
 package com.hemonorte.service
 
+import com.hemonorte.exception.ConflitoException
 import com.hemonorte.model.BolsaSangue
+import com.hemonorte.model.enums.StatusAgendamento
 import com.hemonorte.model.enums.StatusBolsa
 import com.hemonorte.repository.AgendamentoRepository
 import com.hemonorte.repository.BolsaSangueRepository
+import com.hemonorte.repository.TriagemRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
@@ -14,6 +17,7 @@ import java.util.UUID
 class BolsaSangueService(
     private val bolsaRepository: BolsaSangueRepository,
     private val agendamentoRepository: AgendamentoRepository,
+    private val triagemRepository: TriagemRepository,
 ) {
     fun listar(): List<BolsaSangue> = bolsaRepository.findAll()
 
@@ -28,6 +32,12 @@ class BolsaSangueService(
     ): BolsaSangue {
         val agendamento = agendamentoRepository.findById(agendamentoId)
             .orElseThrow { NoSuchElementException("Agendamento não encontrado") }
+        if (agendamento.status != StatusAgendamento.PENDENTE) {
+            throw ConflitoException("Coleta exige agendamento PENDENTE; status atual: ${agendamento.status}")
+        }
+        val triagem = triagemRepository.findByAgendamentoId(agendamentoId)
+            .orElseThrow { ConflitoException("Coleta exige triagem registrada") }
+        if (!triagem.apto) throw ConflitoException("Triagem inapta impede a coleta")
         return bolsaRepository.save(BolsaSangue(agendamento, tipagem, dataColeta, dataValidade))
     }
 

@@ -38,7 +38,8 @@ class BolsaSangueService(
         val triagem = triagemRepository.findByAgendamentoId(agendamentoId)
             .orElseThrow { ConflitoException("Coleta exige triagem registrada") }
         if (!triagem.apto) throw ConflitoException("Triagem inapta impede a coleta")
-        return bolsaRepository.save(BolsaSangue(agendamento, tipagem, dataColeta, dataValidade))
+        agendamento.concluir()
+        return bolsaRepository.saveAndFlush(BolsaSangue(agendamento, tipagem, dataColeta, dataValidade))
     }
 
     @Transactional

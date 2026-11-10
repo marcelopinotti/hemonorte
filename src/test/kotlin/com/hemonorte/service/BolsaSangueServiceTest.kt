@@ -9,6 +9,7 @@ import com.hemonorte.model.SlotAgenda
 import com.hemonorte.model.Triagem
 import com.hemonorte.model.enums.PerfilFuncionario
 import com.hemonorte.model.enums.StatusAgendamento
+import com.hemonorte.model.enums.StatusBolsa
 import com.hemonorte.repository.AgendamentoRepository
 import com.hemonorte.repository.BolsaSangueRepository
 import com.hemonorte.repository.TriagemRepository
@@ -21,6 +22,7 @@ import java.util.Optional
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 
 @Tag("unit")
@@ -67,7 +69,7 @@ class BolsaSangueServiceTest {
 
         assertFailsWith<ConflitoException> { coletar() }
 
-        Mockito.verify(bolsaRepository, Mockito.never()).save(qualquer<BolsaSangue>())
+        Mockito.verify(bolsaRepository, Mockito.never()).saveAndFlush(qualquer<BolsaSangue>())
         assertEquals(StatusAgendamento.PENDENTE, agendamento.status)
         assertNull(agendamento.codigoComprovante)
     }
@@ -77,7 +79,7 @@ class BolsaSangueServiceTest {
         comTriagem(null)
 
         assertFailsWith<ConflitoException> { coletar() }
-        Mockito.verify(bolsaRepository, Mockito.never()).save(qualquer<BolsaSangue>())
+        Mockito.verify(bolsaRepository, Mockito.never()).saveAndFlush(qualquer<BolsaSangue>())
     }
 
     @Test
@@ -86,14 +88,19 @@ class BolsaSangueServiceTest {
         agendamento.cancelar()
 
         assertFailsWith<ConflitoException> { coletar() }
-        Mockito.verify(bolsaRepository, Mockito.never()).save(qualquer<BolsaSangue>())
+        Mockito.verify(bolsaRepository, Mockito.never()).saveAndFlush(qualquer<BolsaSangue>())
     }
 
     @Test
-    fun `triagem apta libera coleta`() {
+    fun `coleta apta cria bolsa em analise e conclui agendamento com comprovante`() {
         comTriagem(Triagem(agendamento, funcionario, BigDecimal("70"), false, false, false))
-        Mockito.`when`(bolsaRepository.save(qualquer<BolsaSangue>())).thenAnswer { it.arguments[0] as BolsaSangue }
+        Mockito.`when`(bolsaRepository.saveAndFlush(qualquer<BolsaSangue>())).thenAnswer { it.arguments[0] as BolsaSangue }
 
-        assertEquals(agendamento, coletar().agendamento)
+        val bolsa = coletar()
+
+        assertEquals(agendamento, bolsa.agendamento)
+        assertEquals(StatusBolsa.EM_ANALISE, bolsa.status)
+        assertEquals(StatusAgendamento.CONCLUIDO, agendamento.status)
+        assertNotNull(agendamento.codigoComprovante)
     }
 }

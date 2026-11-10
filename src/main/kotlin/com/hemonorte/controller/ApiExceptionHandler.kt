@@ -6,6 +6,7 @@ import com.hemonorte.exception.InaptidaoDoacaoException
 import com.hemonorte.exception.RegraNegocioException
 import jakarta.validation.ConstraintViolationException
 import org.springframework.dao.DataIntegrityViolationException
+import org.springframework.dao.OptimisticLockingFailureException
 import org.springframework.http.HttpStatus
 import org.springframework.http.converter.HttpMessageNotReadableException
 import org.springframework.web.bind.MethodArgumentNotValidException
@@ -50,6 +51,10 @@ class ApiExceptionHandler {
     @ExceptionHandler(DataIntegrityViolationException::class)
     @ResponseStatus(HttpStatus.CONFLICT)
     fun conflitoIntegridade() = ApiError("Conflito de integridade")
+
+    @ExceptionHandler(OptimisticLockingFailureException::class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    fun conflitoConcorrencia() = ApiError("Registro alterado por outra operação; tente novamente")
 
     @ExceptionHandler(RegraNegocioException::class)
     fun regraNegocio(exception: RegraNegocioException) =

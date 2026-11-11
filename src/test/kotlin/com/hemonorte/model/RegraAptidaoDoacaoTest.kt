@@ -34,6 +34,31 @@ class RegraAptidaoDoacaoTest {
     }
 
     @Test
+    fun `limites exatos do intervalo masculino D59 bloqueia e D60 libera`() {
+        val doacao = LocalDate.of(2026, 1, 1)
+
+        val d59 = RegraAptidaoDoacao.avaliar('M', listOf(doacao), doacao.plusDays(59))
+        val d60 = RegraAptidaoDoacao.avaliar('M', listOf(doacao), doacao.plusDays(60))
+
+        assertFalse(d59.apto)
+        assertEquals(doacao.plusDays(60), d59.proximaDataPermitida)
+        assertTrue(d60.apto)
+    }
+
+    @Test
+    fun `limites exatos do intervalo feminino D89 bloqueia e D90 libera`() {
+        val doacao = LocalDate.of(2026, 1, 1)
+
+        val d89 = RegraAptidaoDoacao.avaliar('F', listOf(doacao), doacao.plusDays(89))
+        val d90 = RegraAptidaoDoacao.avaliar('F', listOf(doacao), doacao.plusDays(90))
+
+        assertFalse(d89.apto)
+        assertEquals("Intervalo mínimo entre doações não cumprido", d89.motivo)
+        assertEquals(doacao.plusDays(90), d89.proximaDataPermitida)
+        assertTrue(d90.apto)
+    }
+
+    @Test
     fun `data exata do intervalo e permitida`() {
         val resultado = RegraAptidaoDoacao.avaliar(
             'F',

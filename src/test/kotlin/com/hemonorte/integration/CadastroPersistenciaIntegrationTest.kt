@@ -118,7 +118,7 @@ class CadastroPersistenciaIntegrationTest {
             String::class.java,
         )
 
-        assertEquals(listOf("1", "2", "3", "4"), versoes)
+        assertEquals(listOf("1", "2", "3", "4", "5"), versoes)
         assertEquals(
             true,
             constraintValidada("ck_doador_data_nascimento_nao_futura", "public.doador"),

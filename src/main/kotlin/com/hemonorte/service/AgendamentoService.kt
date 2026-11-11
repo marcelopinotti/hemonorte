@@ -6,6 +6,8 @@ import com.hemonorte.exception.ConflitoException
 import com.hemonorte.exception.InaptidaoDoacaoException
 import com.hemonorte.repository.AgendamentoRepository
 import com.hemonorte.repository.DoadorRepository
+import com.hemonorte.repository.PreTriagemRepository
+import com.hemonorte.model.ResultadoAptidao
 import com.hemonorte.repository.SlotAgendaRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -21,6 +23,7 @@ class AgendamentoService(
     private val doadorRepository: DoadorRepository,
     private val slotAgendaRepository: SlotAgendaRepository,
     private val aptidaoService: AptidaoService,
+    private val preTriagemRepository: PreTriagemRepository,
     private val clock: Clock = Clock.systemUTC(),
 ) {
 
@@ -33,6 +36,7 @@ class AgendamentoService(
         if (!resultadoAptidao.apto) {
             throw InaptidaoDoacaoException(resultadoAptidao)
         }
+        verificarPreTriagem(doadorId)
 
         val slot = slotAgendaRepository.findById(slotId)
             .orElseThrow { NoSuchElementException("Slot de agenda não encontrado") }
@@ -47,6 +51,17 @@ class AgendamentoService(
         }
 
         return agendamentoRepository.save(Agendamento(doador = doador, slot = slot))
+    }
+
+    private fun verificarPreTriagem(doadorId: UUID) {
+        val preTriagem = preTriagemRepository.findFirstByDoadorIdOrderByRespondidaEmDesc(doadorId)
+        val motivo = when {
+            preTriagem == null || !clock.instant().isBefore(preTriagem.validaAte) ->
+                "Responda a pré-triagem antes de agendar"
+            !preTriagem.apto -> "Pré-triagem inapta: ${preTriagem.motivoInaptidao}"
+            else -> return
+        }
+        throw InaptidaoDoacaoException(ResultadoAptidao(false, motivo, null))
     }
 
     @Transactional

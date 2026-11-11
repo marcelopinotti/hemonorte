@@ -4,15 +4,19 @@ import com.hemonorte.exception.InaptidaoDoacaoException
 import com.hemonorte.exception.ConflitoException
 import com.hemonorte.model.Agendamento
 import com.hemonorte.model.Doador
+import com.hemonorte.model.PreTriagem
 import com.hemonorte.model.SlotAgenda
 import com.hemonorte.model.enums.StatusAgendamento
 import com.hemonorte.repository.AgendamentoRepository
 import com.hemonorte.repository.DoadorRepository
+import com.hemonorte.repository.PreTriagemRepository
 import com.hemonorte.repository.SlotAgendaRepository
 import org.junit.jupiter.api.Tag
 import org.mockito.Mockito
 import org.springframework.security.access.AccessDeniedException
+import java.math.BigDecimal
 import java.time.Clock
+import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
@@ -27,15 +31,17 @@ class AgendamentoServiceTest {
     private val agendamentoRepository = Mockito.mock(AgendamentoRepository::class.java)
     private val doadorRepository = Mockito.mock(DoadorRepository::class.java)
     private val slotAgendaRepository = Mockito.mock(SlotAgendaRepository::class.java)
-    private val aptidaoService = AptidaoService(
-        agendamentoRepository,
-        Clock.fixed(Instant.parse("2035-11-10T10:00:00Z"), ZoneOffset.UTC),
-    )
+    private val preTriagemRepository = Mockito.mock(PreTriagemRepository::class.java)
+    private val agora = Instant.parse("2035-11-10T10:00:00Z")
+    private val relogio = Clock.fixed(agora, ZoneOffset.UTC)
+    private val aptidaoService = AptidaoService(agendamentoRepository, relogio)
     private val service = AgendamentoService(
         agendamentoRepository,
         doadorRepository,
         slotAgendaRepository,
         aptidaoService,
+        preTriagemRepository,
+        relogio,
     )
     private val doador = Doador(
         nome = "Ana Souza",
@@ -95,6 +101,8 @@ class AgendamentoServiceTest {
                 agendamentoRepository,
                 Clock.fixed(Instant.parse("2035-11-10T12:00:00Z"), ZoneOffset.UTC),
             ),
+            preTriagemRepository,
+            relogio,
         )
 
         val erro = assertFailsWith<InaptidaoDoacaoException> {
@@ -157,6 +165,7 @@ class AgendamentoServiceTest {
             doadorRepository,
             slotAgendaRepository,
             aptidaoService,
+            preTriagemRepository,
             Clock.fixed(Instant.parse("2035-11-10T12:00:00Z"), ZoneOffset.UTC),
         )
 
@@ -207,7 +216,52 @@ class AgendamentoServiceTest {
         Mockito.verify(agendamentoRepository, Mockito.never()).save(qualquer())
     }
 
-    private fun prepararEntidades() {
+    @Test
+    fun `sem pre-triagem a reserva e recusada antes de buscar o slot`() {
+        prepararEntidades(preTriagem = null)
+
+        val erro = assertFailsWith<InaptidaoDoacaoException> { service.realizarAgendamento(doador.id, slot.id) }
+
+        assertEquals("Responda a pré-triagem antes de agendar", erro.resultado.motivo)
+        Mockito.verify(slotAgendaRepository, Mockito.never()).findById(slot.id)
+        Mockito.verify(agendamentoRepository, Mockito.never()).save(qualquer())
+    }
+
+    @Test
+    fun `pre-triagem vencida exige nova resposta`() {
+        prepararEntidades(preTriagem = preTriagem(respondidaEm = agora.minus(PreTriagem.VALIDADE)))
+
+        val erro = assertFailsWith<InaptidaoDoacaoException> { service.realizarAgendamento(doador.id, slot.id) }
+
+        assertEquals("Responda a pré-triagem antes de agendar", erro.resultado.motivo)
+    }
+
+    @Test
+    fun `pre-triagem inapta informa o motivo e impede a reserva`() {
+        prepararEntidades(preTriagem = preTriagem(teveFebre = true))
+
+        val erro = assertFailsWith<InaptidaoDoacaoException> { service.realizarAgendamento(doador.id, slot.id) }
+
+        assertEquals("Pré-triagem inapta: febre recente", erro.resultado.motivo)
+        Mockito.verify(agendamentoRepository, Mockito.never()).save(qualquer())
+    }
+
+    @Test
+    fun `pre-triagem apta dentro da validade libera a reserva`() {
+        prepararEntidades(preTriagem = preTriagem(respondidaEm = agora.minus(PreTriagem.VALIDADE).plusSeconds(1)))
+        Mockito.`when`(agendamentoRepository.save(qualquer())).thenAnswer { it.arguments[0] as Agendamento }
+
+        assertEquals(StatusAgendamento.PENDENTE, service.realizarAgendamento(doador.id, slot.id).status)
+    }
+
+    private fun preTriagem(
+        respondidaEm: Instant = agora.minus(Duration.ofDays(1)),
+        teveFebre: Boolean = false,
+    ) = PreTriagem(doador, BigDecimal("70.00"), false, false, teveFebre, respondidaEm)
+
+    private fun prepararEntidades(preTriagem: PreTriagem? = preTriagem()) {
+        Mockito.`when`(preTriagemRepository.findFirstByDoadorIdOrderByRespondidaEmDesc(doador.id))
+            .thenReturn(preTriagem)
         Mockito.`when`(doadorRepository.findById(doador.id)).thenReturn(Optional.of(doador))
         Mockito.`when`(slotAgendaRepository.findById(slot.id)).thenReturn(Optional.of(slot))
         Mockito.`when`(

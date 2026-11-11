@@ -9,6 +9,9 @@ import com.hemonorte.model.Doador
 import com.hemonorte.model.Funcionario
 import com.hemonorte.model.SlotAgenda
 import com.hemonorte.cpfDeTeste
+import com.hemonorte.model.PreTriagem
+import com.hemonorte.repository.PreTriagemRepository
+import java.math.BigDecimal
 import com.hemonorte.model.enums.PerfilFuncionario
 import com.hemonorte.model.enums.StatusAgendamento
 import com.hemonorte.repository.AgendamentoRepository
@@ -86,6 +89,13 @@ class CadastroPersistenciaIntegrationTest {
 
     @Autowired
     lateinit var agendamentoService: AgendamentoService
+
+    @Autowired
+    lateinit var preTriagemRepository: PreTriagemRepository
+
+    private fun preTriagemApta(doador: Doador) {
+        preTriagemRepository.saveAndFlush(PreTriagem(doador, BigDecimal("70.00"), false, false, false))
+    }
 
     @Autowired
     lateinit var jwtService: JwtService
@@ -190,7 +200,7 @@ class CadastroPersistenciaIntegrationTest {
                         genero = 'M',
                         cpf = cpfDeTeste(10_000L + tentativa * 10 + numero),
                     ),
-                )
+                ).also(::preTriagemApta)
             }
             val executor = Executors.newFixedThreadPool(2)
             val largada = CyclicBarrier(2)
@@ -236,7 +246,7 @@ class CadastroPersistenciaIntegrationTest {
                     genero = 'M',
                     cpf = cpfDeTeste(20_000L + numero),
                 ),
-            )
+            ).also(::preTriagemApta)
         }
 
         val reserva = agendamentoService.realizarAgendamento(primeiro.id, slot.id)

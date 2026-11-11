@@ -190,6 +190,47 @@ class TriagemIntegrationTest {
     }
 
     @Test
+    fun `reserva exige pre-triagem apta respondida pelo proprio doador`() {
+        val tokenDoador = jwtService.gerarToken(doador.id, "DOADOR")
+        val slot = slotAgendaRepository.saveAndFlush(SlotAgenda(Instant.now().plusSeconds(86_400 * 5), 5))
+        fun reservar() = mockMvc.perform(
+            post("/agendamentos").bearer(tokenDoador).contentType(MediaType.APPLICATION_JSON)
+                .content("""{"slotId":"${slot.id}"}"""),
+        )
+        fun responder(febre: Boolean) = mockMvc.perform(
+            post("/api/doador/me/pre-triagem").bearer(tokenDoador).contentType(MediaType.APPLICATION_JSON)
+                .content("""{"peso":70.00,"tatuagemRecente":false,"cirurgiaRecente":false,"teveFebre":$febre}"""),
+        )
+
+        mockMvc.perform(get("/api/doador/me/pre-triagem/perguntas").bearer(tokenDoador))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.length()").value(4))
+        mockMvc.perform(get("/api/doador/me/pre-triagem").bearer(tokenDoador)).andExpect(status().isNotFound)
+        reservar()
+            .andExpect(status().isUnprocessableContent)
+            .andExpect(jsonPath("$.motivo").value("Responda a pré-triagem antes de agendar"))
+
+        responder(febre = true)
+            .andExpect(status().isCreated)
+            .andExpect(jsonPath("$.apto").value(false))
+            .andExpect(jsonPath("$.motivoInaptidao").value("febre recente"))
+            .andExpect(jsonPath("$.respostas[3].codigo").value("TEVE_FEBRE"))
+            .andExpect(jsonPath("$.respostas[3].resposta").value(true))
+        reservar()
+            .andExpect(status().isUnprocessableContent)
+            .andExpect(jsonPath("$.motivo").value("Pré-triagem inapta: febre recente"))
+
+        responder(febre = false).andExpect(status().isCreated).andExpect(jsonPath("$.apto").value(true))
+        mockMvc.perform(get("/api/doador/me/pre-triagem").bearer(tokenDoador))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.apto").value(true))
+        reservar().andExpect(status().isCreated)
+
+        val (_, triador) = tokenDe(PerfilFuncionario.TRIAGEM)
+        mockMvc.perform(get("/api/doador/me/pre-triagem/perguntas").bearer(triador)).andExpect(status().isForbidden)
+    }
+
+    @Test
     fun `entradas invalidas e vinculos inexistentes sao rejeitados`() {
         val (_, triador) = tokenDe(PerfilFuncionario.TRIAGEM)
 

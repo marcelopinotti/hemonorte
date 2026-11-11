@@ -8,6 +8,12 @@ import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
 import java.time.LocalDate
 
+data class EstoqueCritico(
+    val tipagem: String,
+    val disponiveis: Long,
+    val quantidadeCritica: Int,
+)
+
 @Service
 class EstoqueService(
     private val estoqueMinimoRepository: EstoqueMinimoRepository,
@@ -35,14 +41,15 @@ class EstoqueService(
     }
 
     @Transactional(readOnly = true)
-    fun listarEstoquesCriticos(): List<EstoqueMinimo> {
+    fun listarEstoquesCriticos(): List<EstoqueCritico> {
         val disponiveis = disponiveisPorTipagem()
-        return estoqueMinimoRepository.findAll().filter { minimo ->
-            (disponiveis[minimo.tipagem] ?: 0L) <= minimo.quantidadeCritica
-        }
+        return estoqueMinimoRepository.findAll()
+            .map { EstoqueCritico(it.tipagem, disponiveis[it.tipagem] ?: 0L, it.quantidadeCritica) }
+            .filter { it.disponiveis <= it.quantidadeCritica }
+            .sortedBy { it.tipagem }
     }
 
-    private companion object {
+    companion object {
         val TIPAGENS = listOf("A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-")
     }
 }

@@ -1,0 +1,10 @@
+groups:
+  - name: hemonorte-estoque
+    rules:
+      - alert: EstoqueSangueCritico
+        expr: hemonorte_estoque_critico == 1
+        labels:
+          severity: warning
+        annotations:
+          summary: "Estoque crítico da tipagem {{ $labels.tipagem }}"
+          description: "Bolsas disponíveis da tipagem {{ $labels.tipagem }} estão no mínimo configurado ou abaixo dele."

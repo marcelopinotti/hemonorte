@@ -11,6 +11,7 @@ import com.hemonorte.dto.BolsaSangueResponse
 import com.hemonorte.dto.toResponse
 import com.hemonorte.dto.HistoricoAuditoriaResponse
 import com.hemonorte.security.funcionarioAutenticado
+import com.hemonorte.service.EstoqueCritico
 import org.springframework.security.core.Authentication
 import jakarta.validation.Valid
 import org.springframework.http.ResponseEntity
@@ -76,8 +77,5 @@ class EstoqueController(
 
     @GetMapping("/criticos")
     @PreAuthorize("hasAnyRole('COLETA', 'LABORATORIO', 'ADMIN')")
-    fun listarEstoquesCriticos(): ResponseEntity<List<EstoqueMinimo>> {
-        val criticos = estoqueService.listarEstoquesCriticos()
-        return ResponseEntity.ok(criticos)
-    }
+    fun listarEstoquesCriticos(): List<EstoqueCritico> = estoqueService.listarEstoquesCriticos()
 }

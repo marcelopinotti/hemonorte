@@ -42,10 +42,9 @@ class EstoqueServiceTest {
     @Test
     fun `lista tipagem quando quantidade disponivel e igual ao limite`() {
         disponiveis("O+" to 2L)
-        val minimo = EstoqueMinimo("O+", 2)
-        Mockito.`when`(minimoRepository.findAll()).thenReturn(listOf(minimo))
+        Mockito.`when`(minimoRepository.findAll()).thenReturn(listOf(EstoqueMinimo("O+", 2)))
 
-        assertEquals(listOf(minimo), service.listarEstoquesCriticos())
+        assertEquals(listOf(EstoqueCritico("O+", 2L, 2)), service.listarEstoquesCriticos())
     }
 
     @Test
@@ -55,6 +54,6 @@ class EstoqueServiceTest {
         val vazio = EstoqueMinimo("A-", 1)
         Mockito.`when`(minimoRepository.findAll()).thenReturn(listOf(acima, vazio))
 
-        assertEquals(listOf(vazio), service.listarEstoquesCriticos())
+        assertEquals(listOf(EstoqueCritico("A-", 0L, 1)), service.listarEstoquesCriticos())
     }
 }

@@ -1,7 +1,12 @@
 package com.hemonorte.service
 
+import com.hemonorte.model.Agendamento
 import com.hemonorte.model.Doador
+import com.hemonorte.model.SlotAgenda
+import com.hemonorte.model.enums.StatusAgendamento
+import com.hemonorte.repository.AgendamentoRepository
 import com.hemonorte.repository.DoadorRepository
+import java.time.Instant
 import org.junit.jupiter.api.Tag
 import org.mockito.Mockito
 import org.springframework.security.crypto.password.PasswordEncoder
@@ -15,7 +20,32 @@ class DoadorServiceTest {
 
     private val repository = Mockito.mock(DoadorRepository::class.java)
     private val passwordEncoder = Mockito.mock(PasswordEncoder::class.java)
-    private val service = DoadorService(repository, passwordEncoder)
+    private val agendamentoRepository = Mockito.mock(AgendamentoRepository::class.java)
+    private val service = DoadorService(repository, passwordEncoder, agendamentoRepository)
+
+    @Test
+    fun `inativacao preserva o registro e cancela reservas pendentes`() {
+        val doador = Doador(
+            nome = "Ana Souza",
+            email = "ana@email.com",
+            cpf = "12345678909",
+            senhaHash = "hash",
+            tipagem = "O+",
+            dataNascimento = LocalDate.now().minusYears(30),
+            genero = 'F',
+        )
+        val pendente = Agendamento(doador, SlotAgenda(Instant.now().plusSeconds(86_400), 5))
+        Mockito.`when`(repository.findById(doador.id)).thenReturn(Optional.of(doador))
+        Mockito.`when`(agendamentoRepository.findByDoadorIdAndStatus(doador.id, StatusAgendamento.PENDENTE))
+            .thenReturn(listOf(pendente))
+
+        service.inativar(doador.id)
+
+        assertEquals(false, doador.ativo)
+        assertEquals(StatusAgendamento.CANCELADO, pendente.status)
+        Mockito.verify(repository).saveAndFlush(doador)
+        Mockito.verify(repository, Mockito.never()).delete(doador)
+    }
 
     @Test
     fun `cadastro persiste doador`() {

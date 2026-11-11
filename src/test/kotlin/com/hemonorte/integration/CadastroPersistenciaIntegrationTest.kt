@@ -10,6 +10,7 @@ import com.hemonorte.model.Funcionario
 import com.hemonorte.model.SlotAgenda
 import com.hemonorte.cpfDeTeste
 import com.hemonorte.model.enums.PerfilFuncionario
+import com.hemonorte.model.enums.StatusAgendamento
 import com.hemonorte.repository.AgendamentoRepository
 import com.hemonorte.repository.DoadorRepository
 import com.hemonorte.repository.FuncionarioRepository
@@ -417,7 +418,7 @@ class CadastroPersistenciaIntegrationTest {
     }
 
     @Test
-    fun `doador com historico vinculado nao pode ser excluido`() {
+    fun `exclusao inativa o doador preservando historico e bloqueando acesso`() {
         val doador = doadorRepository.save(
             Doador(
                 nome = "Doador com Histórico",
@@ -434,12 +435,14 @@ class CadastroPersistenciaIntegrationTest {
         )
         agendamentoRepository.save(Agendamento(doador = doador, slot = slot))
 
-        mockMvc.perform(delete("/api/doador/{id}", doador.id).bearer(adminToken))
-            .andExpect(status().isConflict)
-            .andExpect(jsonPath("$.erro").value("Doador possui histórico vinculado"))
+        val tokenDoador = jwtService.gerarToken(doador.id, "DOADOR")
 
-        assertNotNull(doadorRepository.findById(doador.id).orElse(null))
-        assertEquals(1, agendamentoRepository.count())
+        mockMvc.perform(delete("/api/doador/{id}", doador.id).bearer(adminToken))
+            .andExpect(status().isNoContent)
+
+        assertEquals(false, doadorRepository.findById(doador.id).orElseThrow().ativo)
+        assertEquals(StatusAgendamento.CANCELADO, agendamentoRepository.findAll().single().status)
+        mockMvc.perform(get("/api/doador/me").bearer(tokenDoador)).andExpect(status().isUnauthorized)
     }
 
     @Test

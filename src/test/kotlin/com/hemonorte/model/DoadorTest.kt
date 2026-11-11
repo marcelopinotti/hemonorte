@@ -114,6 +114,7 @@ class DoadorTest {
     fun `cpfs com digitos verificadores corretos sao aceitos`() {
         listOf("52998224725", "11144477735", "10120230364").forEach { assertEquals(it, doador(cpf = it).cpf) }
     }
+
     @Test
     fun `doador nasce ativo e pode ser inativado`() {
         val d = doador()

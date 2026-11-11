@@ -57,8 +57,16 @@ class Doador(
     @Column(name = "criado_em", nullable = false, updatable = false)
     val criadoEm: Instant = Instant.now()
 
+    @Column(nullable = false)
+    var ativo: Boolean = true
+        protected set
+
     init {
         require(cpfValido(cpf)) { "CPF inválido" }
+    }
+
+    fun inativar() {
+        ativo = false
     }
 
     fun alterarNome(novoNome: String) {

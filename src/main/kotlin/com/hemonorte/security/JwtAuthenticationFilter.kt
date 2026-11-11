@@ -45,7 +45,8 @@ class JwtAuthenticationFilter(
             val tipo = TipoUsuario.valueOf(claims.get("tipo", String::class.java))
             val (principal, authorities) = when (tipo) {
                 TipoUsuario.DOADOR -> {
-                    if (!doadorRepository.existsById(id)) error("Doador inexistente")
+                    val doador = doadorRepository.findById(id).orElse(null) ?: error("Doador inexistente")
+                    if (!doador.ativo) error("Doador inativo")
                     DoadorAutenticado(id) to listOf(SimpleGrantedAuthority("TIPO_DOADOR"))
                 }
                 TipoUsuario.FUNCIONARIO -> {

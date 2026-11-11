@@ -171,6 +171,14 @@ class TriagemIntegrationTest {
             .andExpect(jsonPath("$.status").value("CONCLUIDO"))
             .andExpect(jsonPath("$.codigoComprovante").isNotEmpty)
 
+        val codigo = agendamentoRepository.findById(agendamento.id).orElseThrow().codigoComprovante
+        mockMvc.perform(get("/comprovantes/{codigo}", codigo))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.valido").value(true))
+            .andExpect(jsonPath("$.doador").value("Doadora Triagem"))
+            .andExpect(jsonPath("$.cpf").doesNotExist())
+        mockMvc.perform(get("/comprovantes/{codigo}", UUID.randomUUID())).andExpect(status().isNotFound)
+
         mockMvc.perform(
             post("/exames-sorologicos").bearer(laboratorio).contentType(MediaType.APPLICATION_JSON)
                 .content("""{"bolsaId":"$bolsaId","hiv":"NEGATIVO","hepatite":"NEGATIVO","chagas":"NEGATIVO"}"""),

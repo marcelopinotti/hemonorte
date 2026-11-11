@@ -21,7 +21,8 @@ class SecurityConfig(private val jwtAuthenticationFilter: JwtAuthenticationFilte
         .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
         .authorizeHttpRequests {
             it.requestMatchers(HttpMethod.POST, "/api/doador", "/auth/login/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/slots", "/actuator/health", "/actuator/prometheus").permitAll()
+                .requestMatchers(HttpMethod.GET, "/slots", "/comprovantes/*", "/actuator/health", "/actuator/prometheus")
+                .permitAll()
                 .requestMatchers(
                     "/api/funcionario/**",
                     "/api/doador/**",

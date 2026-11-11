@@ -10,6 +10,7 @@ import java.util.Optional
 @Repository
 interface AgendamentoRepository : JpaRepository<Agendamento, UUID> {
     fun findByDoadorId(doadorId: UUID): List<Agendamento>
+    fun findByCodigoComprovante(codigoComprovante: UUID): Agendamento?
     fun findByIdAndDoadorId(id: UUID, doadorId: UUID): Optional<Agendamento>
     fun findByDoadorIdAndStatus(doadorId: UUID, status: StatusAgendamento): List<Agendamento>
     fun findBySlotIdAndStatus(slotId: UUID, status: StatusAgendamento): List<Agendamento>

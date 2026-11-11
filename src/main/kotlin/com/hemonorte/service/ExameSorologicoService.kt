@@ -8,6 +8,7 @@ import com.hemonorte.model.enums.StatusBolsa
 import com.hemonorte.repository.BolsaSangueRepository
 import com.hemonorte.repository.ExameSorologicoRepository
 import com.hemonorte.repository.FuncionarioRepository
+import com.hemonorte.repository.HistoricoAuditoriaRepository
 import org.springframework.security.access.AccessDeniedException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -20,6 +21,7 @@ class ExameSorologicoService(
     private val exameSorologicoRepository: ExameSorologicoRepository,
     private val bolsaSangueRepository: BolsaSangueRepository,
     private val funcionarioRepository: FuncionarioRepository,
+    private val historicoAuditoriaRepository: HistoricoAuditoriaRepository,
     private val clock: Clock = Clock.systemUTC(),
 ) {
 
@@ -54,10 +56,12 @@ class ExameSorologicoService(
         )
 
         val vencida = bolsa.dataValidade.isBefore(LocalDate.now(clock))
-        bolsa.transicionarPara(
-            if (exame.resultadoFinal == ResultadoFinal.APROVADO && !vencida) StatusBolsa.DISPONIVEL
-            else StatusBolsa.DESCARTADA,
-        )
+        val (destino, motivo) = when {
+            exame.resultadoFinal == ResultadoFinal.REPROVADO -> StatusBolsa.DESCARTADA to "Exame sorológico reprovado"
+            vencida -> StatusBolsa.DESCARTADA to "Bolsa vencida antes da liberação"
+            else -> StatusBolsa.DISPONIVEL to "Exame sorológico aprovado"
+        }
+        historicoAuditoriaRepository.save(bolsa.transicionarPara(destino, funcionario, motivo))
 
         return exameSorologicoRepository.saveAndFlush(exame)
     }

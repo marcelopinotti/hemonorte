@@ -34,11 +34,13 @@ class ExameSorologicoServiceTest {
     private val exameRepository = Mockito.mock(ExameSorologicoRepository::class.java)
     private val bolsaRepository = Mockito.mock(BolsaSangueRepository::class.java)
     private val funcionarioRepository = Mockito.mock(FuncionarioRepository::class.java)
+    private val historicoRepository = Mockito.mock(com.hemonorte.repository.HistoricoAuditoriaRepository::class.java)
     private val hoje = LocalDate.of(2035, 11, 10)
     private val service = ExameSorologicoService(
         exameRepository,
         bolsaRepository,
         funcionarioRepository,
+        historicoRepository,
         Clock.fixed(Instant.parse("2035-11-10T10:00:00Z"), ZoneOffset.UTC),
     )
 
@@ -116,6 +118,24 @@ class ExameSorologicoServiceTest {
         examinar(vencida)
 
         assertEquals(StatusBolsa.DESCARTADA, vencida.status)
+        assertEquals("Bolsa vencida antes da liberação", motivoAuditado())
+    }
+
+    @Test
+    fun `resultado do exame grava auditoria com o laboratorio responsavel`() {
+        examinar(bolsa())
+        assertEquals("Exame sorológico aprovado", motivoAuditado())
+
+        Mockito.clearInvocations(historicoRepository)
+        examinar(bolsa(), hiv = POSITIVO)
+        assertEquals("Exame sorológico reprovado", motivoAuditado())
+    }
+
+    private fun motivoAuditado(): String? {
+        val captor = org.mockito.ArgumentCaptor.forClass(com.hemonorte.model.HistoricoAuditoria::class.java)
+        Mockito.verify(historicoRepository).save(captor.capture())
+        assertEquals(laboratorio, captor.value.funcionario)
+        return captor.value.motivo
     }
 
     @Test
@@ -133,7 +153,7 @@ class ExameSorologicoServiceTest {
         Mockito.`when`(exameRepository.existsByBolsaId(duplicada.id)).thenReturn(true)
         assertFailsWith<ConflitoException> { examinar(duplicada) }
 
-        val liberada = bolsa().also { it.transicionarPara(StatusBolsa.DISPONIVEL) }
+        val liberada = bolsa().also { it.transicionarPara(StatusBolsa.DISPONIVEL, null, null) }
         assertFailsWith<ConflitoException> { examinar(liberada) }
 
         Mockito.verify(exameRepository, Mockito.never()).saveAndFlush(qualquer<ExameSorologico>())

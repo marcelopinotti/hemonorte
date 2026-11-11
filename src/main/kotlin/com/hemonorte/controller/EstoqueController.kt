@@ -9,6 +9,9 @@ import com.hemonorte.dto.AtualizarBolsaRequest
 import com.hemonorte.model.BolsaSangue
 import com.hemonorte.dto.BolsaSangueResponse
 import com.hemonorte.dto.toResponse
+import com.hemonorte.dto.HistoricoAuditoriaResponse
+import com.hemonorte.security.funcionarioAutenticado
+import org.springframework.security.core.Authentication
 import jakarta.validation.Valid
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
@@ -47,7 +50,18 @@ class EstoqueController(
     fun atualizarBolsa(
         @PathVariable id: UUID,
         @RequestBody @Valid request: AtualizarBolsaRequest,
-    ): BolsaSangueResponse = bolsaSangueService.atualizarStatus(id, request.status).toResponse()
+        authentication: Authentication,
+    ): BolsaSangueResponse = bolsaSangueService.atualizarStatus(
+        id = id,
+        status = request.status,
+        motivo = request.motivo,
+        funcionarioId = authentication.funcionarioAutenticado().id,
+    ).toResponse()
+
+    @GetMapping("/{id}/historico")
+    @PreAuthorize("hasAnyRole('COLETA', 'LABORATORIO', 'ADMIN')")
+    fun historico(@PathVariable id: UUID): List<HistoricoAuditoriaResponse> =
+        bolsaSangueService.historico(id).map { it.toResponse() }
 
     @PutMapping("/minimos")
     @PreAuthorize("hasAnyRole('COLETA', 'LABORATORIO', 'ADMIN')")

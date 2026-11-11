@@ -12,6 +12,9 @@ import com.hemonorte.model.enums.StatusAgendamento
 import com.hemonorte.model.enums.StatusBolsa
 import com.hemonorte.repository.AgendamentoRepository
 import com.hemonorte.repository.BolsaSangueRepository
+import com.hemonorte.repository.FuncionarioRepository
+import com.hemonorte.repository.HistoricoAuditoriaRepository
+import com.hemonorte.model.HistoricoAuditoria
 import com.hemonorte.repository.TriagemRepository
 import org.junit.jupiter.api.Tag
 import org.mockito.Mockito
@@ -31,7 +34,15 @@ class BolsaSangueServiceTest {
     private val bolsaRepository = Mockito.mock(BolsaSangueRepository::class.java)
     private val agendamentoRepository = Mockito.mock(AgendamentoRepository::class.java)
     private val triagemRepository = Mockito.mock(TriagemRepository::class.java)
-    private val service = BolsaSangueService(bolsaRepository, agendamentoRepository, triagemRepository)
+    private val funcionarioRepository = Mockito.mock(FuncionarioRepository::class.java)
+    private val historicoRepository = Mockito.mock(HistoricoAuditoriaRepository::class.java)
+    private val service = BolsaSangueService(
+        bolsaRepository,
+        agendamentoRepository,
+        triagemRepository,
+        funcionarioRepository,
+        historicoRepository,
+    )
 
     private val agendamento = Agendamento(
         Doador(
@@ -89,6 +100,36 @@ class BolsaSangueServiceTest {
 
         assertFailsWith<ConflitoException> { coletar() }
         Mockito.verify(bolsaRepository, Mockito.never()).saveAndFlush(qualquer<BolsaSangue>())
+    }
+
+    @Test
+    fun `descarte manual grava auditoria com funcionario e motivo`() {
+        val bolsa = BolsaSangue(agendamento, "O+", LocalDate.now(), LocalDate.now().plusDays(35))
+        Mockito.`when`(bolsaRepository.findById(bolsa.id)).thenReturn(Optional.of(bolsa))
+        Mockito.`when`(funcionarioRepository.findById(funcionario.id)).thenReturn(Optional.of(funcionario))
+        Mockito.`when`(bolsaRepository.save(bolsa)).thenReturn(bolsa)
+        val captor = org.mockito.ArgumentCaptor.forClass(HistoricoAuditoria::class.java)
+
+        service.atualizarStatus(bolsa.id, StatusBolsa.DESCARTADA, "Bolsa rompida", funcionario.id)
+
+        Mockito.verify(historicoRepository).save(captor.capture())
+        assertEquals(StatusBolsa.DESCARTADA, bolsa.status)
+        assertEquals(funcionario, captor.value.funcionario)
+        assertEquals(StatusBolsa.EM_ANALISE, captor.value.statusAnterior)
+        assertEquals("Bolsa rompida", captor.value.motivo)
+    }
+
+    @Test
+    fun `descarte manual sem motivo nao grava nada`() {
+        val bolsa = BolsaSangue(agendamento, "O+", LocalDate.now(), LocalDate.now().plusDays(35))
+        Mockito.`when`(bolsaRepository.findById(bolsa.id)).thenReturn(Optional.of(bolsa))
+        Mockito.`when`(funcionarioRepository.findById(funcionario.id)).thenReturn(Optional.of(funcionario))
+
+        assertFailsWith<IllegalArgumentException> {
+            service.atualizarStatus(bolsa.id, StatusBolsa.DESCARTADA, null, funcionario.id)
+        }
+        Mockito.verify(historicoRepository, Mockito.never()).save(qualquer<HistoricoAuditoria>())
+        Mockito.verify(bolsaRepository, Mockito.never()).save(qualquer<BolsaSangue>())
     }
 
     @Test

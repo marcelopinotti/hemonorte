@@ -37,6 +37,7 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
 
 @Tag("integration")
@@ -174,6 +175,18 @@ class TriagemIntegrationTest {
             post("/exames-sorologicos").bearer(laboratorio).contentType(MediaType.APPLICATION_JSON)
                 .content("""{"bolsaId":"$bolsaId","hiv":"NEGATIVO","hepatite":"NEGATIVO","chagas":"NEGATIVO"}"""),
         ).andExpect(status().isCreated)
+
+        mockMvc.perform(get("/estoque/{id}/historico", bolsaId).bearer(laboratorio))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.length()").value(1))
+            .andExpect(jsonPath("$[0].statusAnterior").value("EM_ANALISE"))
+            .andExpect(jsonPath("$[0].statusNovo").value("DISPONIVEL"))
+            .andExpect(jsonPath("$[0].motivo").value("Exame sorológico aprovado"))
+            .andExpect(jsonPath("$[0].funcionarioId").isNotEmpty)
+        assertFailsWith<Exception> {
+            jdbcTemplate.update("UPDATE historico_auditoria SET motivo = 'adulterado'")
+        }
+        assertFailsWith<Exception> { jdbcTemplate.update("DELETE FROM historico_auditoria") }
 
         mockMvc.perform(get("/estoque/disponiveis").bearer(laboratorio))
             .andExpect(status().isOk)

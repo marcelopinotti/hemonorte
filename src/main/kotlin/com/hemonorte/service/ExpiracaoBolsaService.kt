@@ -2,6 +2,7 @@ package com.hemonorte.service
 
 import com.hemonorte.model.enums.StatusBolsa
 import com.hemonorte.repository.BolsaSangueRepository
+import com.hemonorte.repository.HistoricoAuditoriaRepository
 import org.slf4j.LoggerFactory
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
@@ -10,7 +11,8 @@ import java.time.LocalDate
 
 @Service
 class ExpiracaoBolsaService(
-    private val bolsaSangueRepository: BolsaSangueRepository
+    private val bolsaSangueRepository: BolsaSangueRepository,
+    private val historicoAuditoriaRepository: HistoricoAuditoriaRepository,
 ) {
     private val logger = LoggerFactory.getLogger(ExpiracaoBolsaService::class.java)
 
@@ -28,8 +30,7 @@ class ExpiracaoBolsaService(
         )
 
         for (bolsa in bolsasVencidas) {
-            // Realiza a transição para expirada e registra na auditoria
-            bolsa.transicionarPara(StatusBolsa.VENCIDA)
+            historicoAuditoriaRepository.save(bolsa.transicionarPara(StatusBolsa.VENCIDA, null, "Validade expirada"))
             bolsaSangueRepository.save(bolsa)
             logger.info("Bolsa ID: ${bolsa.id} marcada como vencida.")
         }

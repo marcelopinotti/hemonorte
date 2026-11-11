@@ -45,6 +45,28 @@ Authorization: Bearer {{doadorToken}}
 GET {{baseUrl}}/api/doador/me/agendamentos
 Authorization: Bearer {{doadorToken}}
 
+### Histórico de doações concluídas
+GET {{baseUrl}}/api/doador/me/doacoes
+Authorization: Bearer {{doadorToken}}
+
+### Perguntas da pré-triagem
+GET {{baseUrl}}/api/doador/me/pre-triagem/perguntas
+Authorization: Bearer {{doadorToken}}
+
+### Responder pré-triagem — esperado 201 com respostas, apto e motivo; vale 7 dias
+POST {{baseUrl}}/api/doador/me/pre-triagem
+Authorization: Bearer {{doadorToken}}
+Content-Type: application/json
+
+{"peso":72.5,"tatuagemRecente":false,"cirurgiaRecente":false,"teveFebre":false}
+
+### Última pré-triagem respondida
+GET {{baseUrl}}/api/doador/me/pre-triagem
+Authorization: Bearer {{doadorToken}}
+
+### Validar comprovante — público
+GET {{baseUrl}}/comprovantes/{{codigoComprovante}}
+
 ### Gestão ADMIN
 GET {{baseUrl}}/api/funcionario
 Authorization: Bearer {{adminToken}}
@@ -72,9 +94,16 @@ GET {{baseUrl}}/slots?inicio=2035-11-10T00:00:00-03:00&fim=2035-11-11T00:00:00-0
 GET {{baseUrl}}/doadores/{{doadorId}}/aptidao
 Authorization: Bearer {{doadorToken}}
 
-### Reservar horário — esperado 201; se inapto, 422 com motivo e próxima data
+### Reservar horário — esperado 201; sem pré-triagem apta válida ou inapto, 422 com motivo
 POST {{baseUrl}}/agendamentos
 Authorization: Bearer {{doadorToken}}
 Content-Type: application/json
 
 {"slotId":"{{slotId}}"}
+
+### Remarcar reserva — cancela a atual e reserva o novo horário na mesma transação; se falhar, a original é mantida
+PATCH {{baseUrl}}/agendamentos/{{agendamentoId}}/remarcar
+Authorization: Bearer {{doadorToken}}
+Content-Type: application/json
+
+{"slotId":"{{novoSlotId}}"}

@@ -48,7 +48,7 @@ class BolsaSangue(
         protected set
 
 
-    fun transicionarPara(novoStatus: StatusBolsa) {
+    fun transicionarPara(novoStatus: StatusBolsa, funcionario: Funcionario?, motivo: String?): HistoricoAuditoria {
         val transicoesPermitidas = mapOf(
             StatusBolsa.EM_ANALISE  to setOf(StatusBolsa.DISPONIVEL, StatusBolsa.DESCARTADA),
             StatusBolsa.DISPONIVEL  to setOf(StatusBolsa.UTILIZADA, StatusBolsa.DESCARTADA, StatusBolsa.VENCIDA),
@@ -59,7 +59,12 @@ class BolsaSangue(
         require(novoStatus in (transicoesPermitidas[status] ?: emptySet())) {
             "Transição de $status para $novoStatus não é permitida"
         }
+        require(novoStatus != StatusBolsa.DESCARTADA || !motivo.isNullOrBlank()) {
+            "Descarte exige motivo"
+        }
+        val registro = HistoricoAuditoria(this, funcionario, status, novoStatus, motivo?.trim()?.ifBlank { null })
         status = novoStatus
+        return registro
     }
 
 

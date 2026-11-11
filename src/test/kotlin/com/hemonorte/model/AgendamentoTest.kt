@@ -21,7 +21,7 @@ class AgendamentoTest {
         tipagem = "O+",
         dataNascimento = LocalDate.now().minusYears(30),
         genero = 'F',
-        cpf = "12345678901",
+        cpf = "12345678909",
     )
 
     private fun slot() = SlotAgenda(

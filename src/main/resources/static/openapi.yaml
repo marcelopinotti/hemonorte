@@ -1,0 +1,3111 @@
+openapi: 3.1.0
+info:
+  title: Hemonorte API
+  description: "API para gerenciamento de doadores, funcionários, triagens, exames sorológicos, estoque de bolsas de sangue e agendamento de slots."
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080
+    description: Generated server url
+paths:
+  /slots/{id}:
+    put:
+      tags:
+        - slot-agenda-controller
+      operationId: atualizarSlot
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CriarSlotRequest"
+        required: true
+      responses:
+        "409":
+          description: Conflict
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: "Token ausente, inválido ou expirado"
+        "404":
+          description: Not Found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "422":
+          description: Unprocessable Content
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResultadoAptidao"
+        "400":
+          description: Bad Request
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SlotAgenda"
+        "403":
+          description: Usuário autenticado sem permissão
+      security:
+        - bearerAuth: [ ]
+    delete:
+      tags:
+        - slot-agenda-controller
+      operationId: excluirSlot
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "409":
+          description: Conflict
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: "Token ausente, inválido ou expirado"
+        "404":
+          description: Not Found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "422":
+          description: Unprocessable Content
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResultadoAptidao"
+        "400":
+          description: Bad Request
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "204":
+          description: No Content
+        "403":
+          description: Usuário autenticado sem permissão
+      security:
+        - bearerAuth: [ ]
+  /estoque/{id}:
+    put:
+      tags:
+        - estoque-controller
+      operationId: atualizarBolsa
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AtualizarBolsaRequest"
+        required: true
+      responses:
+        "409":
+          description: Conflict
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: "Token ausente, inválido ou expirado"
+        "404":
+          description: Not Found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "422":
+          description: Unprocessable Content
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResultadoAptidao"
+        "400":
+          description: Bad Request
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/BolsaSangueResponse"
+        "403":
+          description: Usuário autenticado sem permissão
+      security:
+        - bearerAuth: [ ]
+  /estoque/minimos:
+    put:
+      tags:
+        - estoque-controller
+      operationId: definirEstoqueMinimo
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EstoqueMinimoRequest"
+        required: true
+      responses:
+        "409":
+          description: Conflict
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: "Token ausente, inválido ou expirado"
+        "404":
+          description: Not Found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "422":
+          description: Unprocessable Content
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResultadoAptidao"
+        "400":
+          description: Bad Request
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/EstoqueMinimo"
+        "403":
+          description: Usuário autenticado sem permissão
+      security:
+        - bearerAuth: [ ]
+  /api/funcionario/{id}:
+    get:
+      tags:
+        - funcionario-controller
+      operationId: buscar
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "409":
+          description: Conflict
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: "Token ausente, inválido ou expirado"
+        "404":
+          description: Not Found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "422":
+          description: Unprocessable Content
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResultadoAptidao"
+        "400":
+          description: Bad Request
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/FuncionarioResponse"
+        "403":
+          description: Usuário autenticado sem permissão
+      security:
+        - bearerAuth: [ ]
+    put:
+      tags:
+        - funcionario-controller
+      operationId: atualizar
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AtualizacaoFuncionarioRequest"
+        required: true
+      responses:
+        "409":
+          description: Conflict
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: "Token ausente, inválido ou expirado"
+        "404":
+          description: Not Found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "422":
+          description: Unprocessable Content
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResultadoAptidao"
+        "400":
+          description: Bad Request
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/FuncionarioResponse"
+        "403":
+          description: Usuário autenticado sem permissão
+      security:
+        - bearerAuth: [ ]
+    delete:
+      tags:
+        - funcionario-controller
+      operationId: excluir
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "409":
+          description: Conflict
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: "Token ausente, inválido ou expirado"
+        "404":
+          description: Not Found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "422":
+          description: Unprocessable Content
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResultadoAptidao"
+        "400":
+          description: Bad Request
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "204":
+          description: No Content
+        "403":
+          description: Usuário autenticado sem permissão
+      security:
+        - bearerAuth: [ ]
+  /api/funcionario/{id}/senha:
+    put:
+      tags:
+        - funcionario-controller
+      operationId: alterarSenha
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AlteracaoSenhaRequest"
+        required: true
+      responses:
+        "409":
+          description: Conflict
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: "Token ausente, inválido ou expirado"
+        "404":
+          description: Not Found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "422":
+          description: Unprocessable Content
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResultadoAptidao"
+        "400":
+          description: Bad Request
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "204":
+          description: No Content
+        "403":
+          description: Usuário autenticado sem permissão
+      security:
+        - bearerAuth: [ ]
+  /api/doador/{id}:
+    get:
+      tags:
+        - doador-controller
+      operationId: buscar_1
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "409":
+          description: Conflict
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: "Token ausente, inválido ou expirado"
+        "404":
+          description: Not Found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "422":
+          description: Unprocessable Content
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResultadoAptidao"
+        "400":
+          description: Bad Request
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/DoadorResponse"
+        "403":
+          description: Usuário autenticado sem permissão
+      security:
+        - bearerAuth: [ ]
+    put:
+      tags:
+        - doador-controller
+      operationId: atualizar_1
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AtualizacaoDoadorRequest"
+        required: true
+      responses:
+        "409":
+          description: Conflict
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: "Token ausente, inválido ou expirado"
+        "404":
+          description: Not Found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "422":
+          description: Unprocessable Content
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResultadoAptidao"
+        "400":
+          description: Bad Request
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/DoadorResponse"
+        "403":
+          description: Usuário autenticado sem permissão
+      security:
+        - bearerAuth: [ ]
+    delete:
+      tags:
+        - doador-controller
+      operationId: inativar
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "409":
+          description: Conflict
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: "Token ausente, inválido ou expirado"
+        "404":
+          description: Not Found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "422":
+          description: Unprocessable Content
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResultadoAptidao"
+        "400":
+          description: Bad Request
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "204":
+          description: No Content
+        "403":
+          description: Usuário autenticado sem permissão
+      security:
+        - bearerAuth: [ ]
+  /api/doador/{id}/senha:
+    put:
+      tags:
+        - doador-controller
+      operationId: alterarSenha_1
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AlteracaoSenhaRequest"
+        required: true
+      responses:
+        "409":
+          description: Conflict
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: "Token ausente, inválido ou expirado"
+        "404":
+          description: Not Found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "422":
+          description: Unprocessable Content
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResultadoAptidao"
+        "400":
+          description: Bad Request
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "204":
+          description: No Content
+        "403":
+          description: Usuário autenticado sem permissão
+      security:
+        - bearerAuth: [ ]
+  /api/doador/me:
+    get:
+      tags:
+        - doador-controller
+      operationId: buscarMe
+      responses:
+        "409":
+          description: Conflict
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: "Token ausente, inválido ou expirado"
+        "404":
+          description: Not Found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "422":
+          description: Unprocessable Content
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResultadoAptidao"
+        "400":
+          description: Bad Request
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/DoadorResponse"
+        "403":
+          description: Usuário autenticado sem permissão
+      security:
+        - bearerAuth: [ ]
+    put:
+      tags:
+        - doador-controller
+      operationId: atualizarMe
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AtualizacaoDoadorRequest"
+        required: true
+      responses:
+        "409":
+          description: Conflict
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: "Token ausente, inválido ou expirado"
+        "404":
+          description: Not Found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "422":
+          description: Unprocessable Content
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResultadoAptidao"
+        "400":
+          description: Bad Request
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/DoadorResponse"
+        "403":
+          description: Usuário autenticado sem permissão
+      security:
+        - bearerAuth: [ ]
+    delete:
+      tags:
+        - doador-controller
+      operationId: inativarMe
+      responses:
+        "409":
+          description: Conflict
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: "Token ausente, inválido ou expirado"
+        "404":
+          description: Not Found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "422":
+          description: Unprocessable Content
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResultadoAptidao"
+        "400":
+          description: Bad Request
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "204":
+          description: No Content
+        "403":
+          description: Usuário autenticado sem permissão
+      security:
+        - bearerAuth: [ ]
+  /api/doador/me/senha:
+    put:
+      tags:
+        - doador-controller
+      operationId: alterarMinhaSenha
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AlteracaoSenhaRequest"
+        required: true
+      responses:
+        "409":
+          description: Conflict
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: "Token ausente, inválido ou expirado"
+        "404":
+          description: Not Found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "422":
+          description: Unprocessable Content
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResultadoAptidao"
+        "400":
+          description: Bad Request
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "204":
+          description: No Content
+        "403":
+          description: Usuário autenticado sem permissão
+      security:
+        - bearerAuth: [ ]
+  /triagens:
+    get:
+      tags:
+        - triagem-controller
+      operationId: listar
+      responses:
+        "409":
+          description: Conflict
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: "Token ausente, inválido ou expirado"
+        "404":
+          description: Not Found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "422":
+          description: Unprocessable Content
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResultadoAptidao"
+        "400":
+          description: Bad Request
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TriagemResponse"
+        "403":
+          description: Usuário autenticado sem permissão
+      security:
+        - bearerAuth: [ ]
+    post:
+      tags:
+        - triagem-controller
+      operationId: realizarTriagem
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RealizarTriagemRequest"
+        required: true
+      responses:
+        "409":
+          description: Conflict
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: "Token ausente, inválido ou expirado"
+        "404":
+          description: Not Found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "422":
+          description: Unprocessable Content
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResultadoAptidao"
+        "400":
+          description: Bad Request
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/TriagemResponse"
+        "403":
+          description: Usuário autenticado sem permissão
+      security:
+        - bearerAuth: [ ]
+  /slots:
+    get:
+      tags:
+        - slot-agenda-controller
+      operationId: listarPorPeriodo
+      parameters:
+        - name: inicio
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: fim
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+      responses:
+        "409":
+          description: Conflict
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: Unauthorized
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: Not Found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "422":
+          description: Unprocessable Content
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResultadoAptidao"
+        "400":
+          description: Bad Request
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SlotDisponibilidadeResponse"
+    post:
+      tags:
+        - slot-agenda-controller
+      operationId: criarSlot
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CriarSlotRequest"
+        required: true
+      responses:
+        "409":
+          description: Conflict
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: "Token ausente, inválido ou expirado"
+        "404":
+          description: Not Found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "422":
+          description: Unprocessable Content
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResultadoAptidao"
+        "400":
+          description: Bad Request
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SlotAgenda"
+        "403":
+          description: Usuário autenticado sem permissão
+      security:
+        - bearerAuth: [ ]
+  /exames-sorologicos:
+    get:
+      tags:
+        - exame-sorologico-controller
+      operationId: listar_1
+      responses:
+        "409":
+          description: Conflict
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: "Token ausente, inválido ou expirado"
+        "404":
+          description: Not Found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "422":
+          description: Unprocessable Content
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResultadoAptidao"
+        "400":
+          description: Bad Request
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ExameSorologicoResponse"
+        "403":
+          description: Usuário autenticado sem permissão
+      security:
+        - bearerAuth: [ ]
+    post:
+      tags:
+        - exame-sorologico-controller
+      operationId: registrarExame
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegistrarExameRequest"
+        required: true
+      responses:
+        "409":
+          description: Conflict
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: "Token ausente, inválido ou expirado"
+        "404":
+          description: Not Found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "422":
+          description: Unprocessable Content
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResultadoAptidao"
+        "400":
+          description: Bad Request
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ExameSorologicoResponse"
+        "403":
+          description: Usuário autenticado sem permissão
+      security:
+        - bearerAuth: [ ]
+  /estoque:
+    get:
+      tags:
+        - estoque-controller
+      operationId: listarBolsas
+      responses:
+        "409":
+          description: Conflict
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: "Token ausente, inválido ou expirado"
+        "404":
+          description: Not Found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "422":
+          description: Unprocessable Content
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResultadoAptidao"
+        "400":
+          description: Bad Request
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BolsaSangueResponse"
+        "403":
+          description: Usuário autenticado sem permissão
+      security:
+        - bearerAuth: [ ]
+    post:
+      tags:
+        - estoque-controller
+      operationId: criarBolsa
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CriarBolsaRequest"
+        required: true
+      responses:
+        "409":
+          description: Conflict
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: "Token ausente, inválido ou expirado"
+        "404":
+          description: Not Found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "422":
+          description: Unprocessable Content
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResultadoAptidao"
+        "400":
+          description: Bad Request
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "201":
+          description: Created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/BolsaSangueResponse"
+        "403":
+          description: Usuário autenticado sem permissão
+      security:
+        - bearerAuth: [ ]
+  /coletas:
+    get:
+      tags:
+        - coleta-controller
+      operationId: listar_2
+      responses:
+        "409":
+          description: Conflict
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: "Token ausente, inválido ou expirado"
+        "404":
+          description: Not Found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "422":
+          description: Unprocessable Content
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResultadoAptidao"
+        "400":
+          description: Bad Request
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BolsaSangueResponse"
+        "403":
+          description: Usuário autenticado sem permissão
+      security:
+        - bearerAuth: [ ]
+    post:
+      tags:
+        - coleta-controller
+      operationId: registrar
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CriarBolsaRequest"
+        required: true
+      responses:
+        "409":
+          description: Conflict
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: "Token ausente, inválido ou expirado"
+        "404":
+          description: Not Found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "422":
+          description: Unprocessable Content
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResultadoAptidao"
+        "400":
+          description: Bad Request
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "201":
+          description: Created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/BolsaSangueResponse"
+        "403":
+          description: Usuário autenticado sem permissão
+      security:
+        - bearerAuth: [ ]
+  /auth/login/funcionario:
+    post:
+      tags:
+        - auth-controller
+      operationId: loginFuncionario
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginFuncionarioRequest"
+        required: true
+      responses:
+        "409":
+          description: Conflict
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: Unauthorized
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: Not Found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "422":
+          description: Unprocessable Content
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResultadoAptidao"
+        "400":
+          description: Bad Request
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/TokenResponse"
+  /auth/login/doador:
+    post:
+      tags:
+        - auth-controller
+      operationId: loginDoador
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginDoadorRequest"
+        required: true
+      responses:
+        "409":
+          description: Conflict
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: Unauthorized
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: Not Found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "422":
+          description: Unprocessable Content
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResultadoAptidao"
+        "400":
+          description: Bad Request
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/TokenResponse"
+  /api/funcionario:
+    get:
+      tags:
+        - funcionario-controller
+      operationId: listar_3
+      responses:
+        "409":
+          description: Conflict
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: "Token ausente, inválido ou expirado"
+        "404":
+          description: Not Found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "422":
+          description: Unprocessable Content
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResultadoAptidao"
+        "400":
+          description: Bad Request
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FuncionarioResponse"
+        "403":
+          description: Usuário autenticado sem permissão
+      security:
+        - bearerAuth: [ ]
+    post:
+      tags:
+        - funcionario-controller
+      operationId: cadastrar
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CadastroFuncionarioRequest"
+        required: true
+      responses:
+        "409":
+          description: Conflict
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: "Token ausente, inválido ou expirado"
+        "404":
+          description: Not Found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "422":
+          description: Unprocessable Content
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResultadoAptidao"
+        "400":
+          description: Bad Request
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "201":
+          description: Created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/FuncionarioResponse"
+        "403":
+          description: Usuário autenticado sem permissão
+      security:
+        - bearerAuth: [ ]
+  /api/doador:
+    get:
+      tags:
+        - doador-controller
+      operationId: listar_4
+      responses:
+        "409":
+          description: Conflict
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: "Token ausente, inválido ou expirado"
+        "404":
+          description: Not Found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "422":
+          description: Unprocessable Content
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResultadoAptidao"
+        "400":
+          description: Bad Request
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DoadorResponse"
+        "403":
+          description: Usuário autenticado sem permissão
+      security:
+        - bearerAuth: [ ]
+    post:
+      tags:
+        - doador-controller
+      operationId: cadastrar_1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CadastroDoadorRequest"
+        required: true
+      responses:
+        "409":
+          description: Conflict
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: Unauthorized
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: Not Found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "422":
+          description: Unprocessable Content
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResultadoAptidao"
+        "400":
+          description: Bad Request
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "201":
+          description: Created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/DoadorResponse"
+  /api/doador/me/pre-triagem:
+    get:
+      tags:
+        - pre-triagem-controller
+      operationId: ultima
+      responses:
+        "409":
+          description: Conflict
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: "Token ausente, inválido ou expirado"
+        "404":
+          description: Not Found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "422":
+          description: Unprocessable Content
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResultadoAptidao"
+        "400":
+          description: Bad Request
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PreTriagemResponse"
+        "403":
+          description: Usuário autenticado sem permissão
+      security:
+        - bearerAuth: [ ]
+    post:
+      tags:
+        - pre-triagem-controller
+      operationId: responder
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PreTriagemRequest"
+        required: true
+      responses:
+        "409":
+          description: Conflict
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: "Token ausente, inválido ou expirado"
+        "404":
+          description: Not Found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "422":
+          description: Unprocessable Content
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResultadoAptidao"
+        "400":
+          description: Bad Request
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "201":
+          description: Created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PreTriagemResponse"
+        "403":
+          description: Usuário autenticado sem permissão
+      security:
+        - bearerAuth: [ ]
+  /agendamentos:
+    get:
+      tags:
+        - agendamento-controller
+      operationId: listar_5
+      responses:
+        "409":
+          description: Conflict
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: "Token ausente, inválido ou expirado"
+        "404":
+          description: Not Found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "422":
+          description: Unprocessable Content
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResultadoAptidao"
+        "400":
+          description: Bad Request
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AgendamentoResponse"
+        "403":
+          description: Usuário autenticado sem permissão
+      security:
+        - bearerAuth: [ ]
+    post:
+      tags:
+        - agendamento-controller
+      operationId: realizarAgendamento
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RealizarAgendamentoRequest"
+        required: true
+      responses:
+        "409":
+          description: Conflict
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: "Token ausente, inválido ou expirado"
+        "404":
+          description: Not Found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "422":
+          description: Unprocessable Content
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResultadoAptidao"
+        "400":
+          description: Bad Request
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/AgendamentoResponse"
+        "403":
+          description: Usuário autenticado sem permissão
+      security:
+        - bearerAuth: [ ]
+  /agendamentos/{id}/remarcar:
+    patch:
+      tags:
+        - agendamento-controller
+      operationId: remarcar
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RemarcarAgendamentoRequest"
+        required: true
+      responses:
+        "409":
+          description: Conflict
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: "Token ausente, inválido ou expirado"
+        "404":
+          description: Not Found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "422":
+          description: Unprocessable Content
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResultadoAptidao"
+        "400":
+          description: Bad Request
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/AgendamentoResponse"
+        "403":
+          description: Usuário autenticado sem permissão
+      security:
+        - bearerAuth: [ ]
+  /agendamentos/{id}/falta:
+    patch:
+      tags:
+        - agendamento-controller
+      operationId: registrarFalta
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "409":
+          description: Conflict
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: "Token ausente, inválido ou expirado"
+        "404":
+          description: Not Found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "422":
+          description: Unprocessable Content
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResultadoAptidao"
+        "400":
+          description: Bad Request
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/AgendamentoResponse"
+        "403":
+          description: Usuário autenticado sem permissão
+      security:
+        - bearerAuth: [ ]
+  /agendamentos/{id}/cancelar:
+    patch:
+      tags:
+        - agendamento-controller
+      operationId: cancelarAgendamento
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "409":
+          description: Conflict
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: "Token ausente, inválido ou expirado"
+        "404":
+          description: Not Found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "422":
+          description: Unprocessable Content
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResultadoAptidao"
+        "400":
+          description: Bad Request
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/AgendamentoResponse"
+        "403":
+          description: Usuário autenticado sem permissão
+      security:
+        - bearerAuth: [ ]
+  /triagens/agendamento/{agendamentoId}:
+    get:
+      tags:
+        - triagem-controller
+      operationId: buscarPorAgendamento
+      parameters:
+        - name: agendamentoId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "409":
+          description: Conflict
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: "Token ausente, inválido ou expirado"
+        "404":
+          description: Not Found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "422":
+          description: Unprocessable Content
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResultadoAptidao"
+        "400":
+          description: Bad Request
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/TriagemResponse"
+        "403":
+          description: Usuário autenticado sem permissão
+      security:
+        - bearerAuth: [ ]
+  /exames-sorologicos/{id}:
+    get:
+      tags:
+        - exame-sorologico-controller
+      operationId: buscar_2
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "409":
+          description: Conflict
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: "Token ausente, inválido ou expirado"
+        "404":
+          description: Not Found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "422":
+          description: Unprocessable Content
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResultadoAptidao"
+        "400":
+          description: Bad Request
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ExameSorologicoResponse"
+        "403":
+          description: Usuário autenticado sem permissão
+      security:
+        - bearerAuth: [ ]
+  /exames-sorologicos/bolsa/{bolsaId}:
+    get:
+      tags:
+        - exame-sorologico-controller
+      operationId: buscarPorBolsa
+      parameters:
+        - name: bolsaId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "409":
+          description: Conflict
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: "Token ausente, inválido ou expirado"
+        "404":
+          description: Not Found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "422":
+          description: Unprocessable Content
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResultadoAptidao"
+        "400":
+          description: Bad Request
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ExameSorologicoResponse"
+        "403":
+          description: Usuário autenticado sem permissão
+      security:
+        - bearerAuth: [ ]
+  /estoque/{id}/historico:
+    get:
+      tags:
+        - estoque-controller
+      operationId: historico
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "409":
+          description: Conflict
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: "Token ausente, inválido ou expirado"
+        "404":
+          description: Not Found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "422":
+          description: Unprocessable Content
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResultadoAptidao"
+        "400":
+          description: Bad Request
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/HistoricoAuditoriaResponse"
+        "403":
+          description: Usuário autenticado sem permissão
+      security:
+        - bearerAuth: [ ]
+  /estoque/pendentes:
+    get:
+      tags:
+        - estoque-controller
+      operationId: listarPendentes
+      responses:
+        "409":
+          description: Conflict
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: "Token ausente, inválido ou expirado"
+        "404":
+          description: Not Found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "422":
+          description: Unprocessable Content
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResultadoAptidao"
+        "400":
+          description: Bad Request
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BolsaSangueResponse"
+        "403":
+          description: Usuário autenticado sem permissão
+      security:
+        - bearerAuth: [ ]
+  /estoque/disponiveis:
+    get:
+      tags:
+        - estoque-controller
+      operationId: disponiveisPorTipagem
+      responses:
+        "409":
+          description: Conflict
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: "Token ausente, inválido ou expirado"
+        "404":
+          description: Not Found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "422":
+          description: Unprocessable Content
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResultadoAptidao"
+        "400":
+          description: Bad Request
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+                additionalProperties:
+                  type: integer
+                  format: int64
+        "403":
+          description: Usuário autenticado sem permissão
+      security:
+        - bearerAuth: [ ]
+  /estoque/criticos:
+    get:
+      tags:
+        - estoque-controller
+      operationId: listarEstoquesCriticos
+      responses:
+        "409":
+          description: Conflict
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: "Token ausente, inválido ou expirado"
+        "404":
+          description: Not Found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "422":
+          description: Unprocessable Content
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResultadoAptidao"
+        "400":
+          description: Bad Request
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EstoqueCritico"
+        "403":
+          description: Usuário autenticado sem permissão
+      security:
+        - bearerAuth: [ ]
+  /doadores/{id}/aptidao:
+    get:
+      tags:
+        - aptidao-controller
+      operationId: verificarAptidao
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "409":
+          description: Conflict
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: "Token ausente, inválido ou expirado"
+        "404":
+          description: Not Found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "422":
+          description: Unprocessable Content
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResultadoAptidao"
+        "400":
+          description: Bad Request
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResultadoAptidao"
+        "403":
+          description: Usuário autenticado sem permissão
+      security:
+        - bearerAuth: [ ]
+  /comprovantes/{codigo}:
+    get:
+      tags:
+        - comprovante-controller
+      operationId: validar
+      parameters:
+        - name: codigo
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "409":
+          description: Conflict
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: Unauthorized
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: Not Found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "422":
+          description: Unprocessable Content
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResultadoAptidao"
+        "400":
+          description: Bad Request
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ComprovanteResponse"
+  /api/doador/me/pre-triagem/perguntas:
+    get:
+      tags:
+        - pre-triagem-controller
+      operationId: perguntas
+      responses:
+        "409":
+          description: Conflict
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: "Token ausente, inválido ou expirado"
+        "404":
+          description: Not Found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "422":
+          description: Unprocessable Content
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResultadoAptidao"
+        "400":
+          description: Bad Request
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PerguntaPreTriagemResponse"
+        "403":
+          description: Usuário autenticado sem permissão
+      security:
+        - bearerAuth: [ ]
+  /api/doador/me/doacoes:
+    get:
+      tags:
+        - doador-controller
+      operationId: minhasDoacoes
+      responses:
+        "409":
+          description: Conflict
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: "Token ausente, inválido ou expirado"
+        "404":
+          description: Not Found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "422":
+          description: Unprocessable Content
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResultadoAptidao"
+        "400":
+          description: Bad Request
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DoacaoResponse"
+        "403":
+          description: Usuário autenticado sem permissão
+      security:
+        - bearerAuth: [ ]
+  /api/doador/me/agendamentos:
+    get:
+      tags:
+        - doador-controller
+      operationId: meusAgendamentos
+      responses:
+        "409":
+          description: Conflict
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: "Token ausente, inválido ou expirado"
+        "404":
+          description: Not Found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "422":
+          description: Unprocessable Content
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResultadoAptidao"
+        "400":
+          description: Bad Request
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AgendamentoResponse"
+        "403":
+          description: Usuário autenticado sem permissão
+      security:
+        - bearerAuth: [ ]
+  /agendamentos/{id}:
+    get:
+      tags:
+        - agendamento-controller
+      operationId: buscar_3
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "409":
+          description: Conflict
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: "Token ausente, inválido ou expirado"
+        "404":
+          description: Not Found
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "422":
+          description: Unprocessable Content
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResultadoAptidao"
+        "400":
+          description: Bad Request
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/AgendamentoResponse"
+        "403":
+          description: Usuário autenticado sem permissão
+      security:
+        - bearerAuth: [ ]
+components:
+  schemas:
+    ApiError:
+      type: object
+      properties:
+        erro:
+          type: string
+    ResultadoAptidao:
+      type: object
+      properties:
+        apto:
+          type: boolean
+        motivo:
+          type:
+            - string
+            - "null"
+        proximaDataPermitida:
+          type:
+            - string
+            - "null"
+          format: date
+    CriarSlotRequest:
+      type: object
+      properties:
+        inicio:
+          type: string
+          format: date-time
+        capacidade:
+          type: integer
+          format: int32
+          minimum: 1
+      required:
+        - inicio
+    SlotAgenda:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        inicio:
+          type: string
+          format: date-time
+        capacidade:
+          type: integer
+          format: int32
+    AtualizarBolsaRequest:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+            - EM_ANALISE
+            - DISPONIVEL
+            - UTILIZADA
+            - DESCARTADA
+            - VENCIDA
+        motivo:
+          type:
+            - string
+            - "null"
+          maxLength: 255
+          minLength: 0
+      required:
+        - status
+    BolsaSangueResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        agendamentoId:
+          type: string
+          format: uuid
+        tipagem:
+          type: string
+        dataColeta:
+          type: string
+          format: date
+        dataValidade:
+          type: string
+          format: date
+        status:
+          type: string
+          enum:
+            - EM_ANALISE
+            - DISPONIVEL
+            - UTILIZADA
+            - DESCARTADA
+            - VENCIDA
+    EstoqueMinimoRequest:
+      type: object
+      properties:
+        tipagem:
+          type: string
+          minLength: 1
+        quantidadeCritica:
+          type: integer
+          format: int32
+          minimum: 0
+      required:
+        - quantidadeCritica
+        - tipagem
+    EstoqueMinimo:
+      type: object
+      properties:
+        tipagem:
+          type: string
+        quantidadeCritica:
+          type: integer
+          format: int32
+    AtualizacaoFuncionarioRequest:
+      type: object
+      properties:
+        nome:
+          type: string
+          minLength: 1
+        email:
+          type: string
+          format: email
+          minLength: 1
+        perfil:
+          type: string
+          enum:
+            - TRIAGEM
+            - COLETA
+            - LABORATORIO
+            - ADMIN
+      required:
+        - email
+        - nome
+        - perfil
+    FuncionarioResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        matricula:
+          type: string
+        nome:
+          type: string
+        email:
+          type: string
+        perfil:
+          type: string
+          enum:
+            - TRIAGEM
+            - COLETA
+            - LABORATORIO
+            - ADMIN
+        ativo:
+          type: boolean
+    AlteracaoSenhaRequest:
+      type: object
+      properties:
+        senha:
+          type: string
+          maxLength: 72
+          minLength: 0
+      required:
+        - senha
+    AtualizacaoDoadorRequest:
+      type: object
+      properties:
+        nome:
+          type: string
+          minLength: 1
+        email:
+          type: string
+          format: email
+          minLength: 1
+        tipagem:
+          type: string
+          pattern: "(?i)(A|B|AB|O)[+-]"
+        dataNascimento:
+          type: string
+          format: date
+        genero:
+          type: string
+          pattern: "[MF]"
+      required:
+        - email
+        - nome
+    DoadorResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        nome:
+          type: string
+        email:
+          type: string
+        cpf:
+          type: string
+        tipagem:
+          type: string
+        dataNascimento:
+          type: string
+          format: date
+        genero:
+          type: string
+        criadoEm:
+          type: string
+          format: date-time
+        ativo:
+          type: boolean
+    RealizarTriagemRequest:
+      type: object
+      properties:
+        agendamentoId:
+          type: string
+          format: uuid
+        peso:
+          type: number
+          minimum: 0
+        tatuagemRecente:
+          type: boolean
+        cirurgiaRecente:
+          type: boolean
+        teveFebre:
+          type: boolean
+      required:
+        - agendamentoId
+        - cirurgiaRecente
+        - peso
+        - tatuagemRecente
+        - teveFebre
+    TriagemResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        agendamentoId:
+          type: string
+          format: uuid
+        funcionarioId:
+          type: string
+          format: uuid
+        peso:
+          type: number
+        tatuagemRecente:
+          type: boolean
+        cirurgiaRecente:
+          type: boolean
+        teveFebre:
+          type: boolean
+        apto:
+          type: boolean
+        motivoInaptidao:
+          type:
+            - string
+            - "null"
+    RegistrarExameRequest:
+      type: object
+      properties:
+        bolsaId:
+          type: string
+          format: uuid
+        funcionarioId:
+          type:
+            - string
+            - "null"
+          format: uuid
+        hiv:
+          type: string
+          enum:
+            - POSITIVO
+            - NEGATIVO
+        hepatite:
+          type: string
+          enum:
+            - POSITIVO
+            - NEGATIVO
+        chagas:
+          type: string
+          enum:
+            - POSITIVO
+            - NEGATIVO
+      required:
+        - bolsaId
+        - chagas
+        - hepatite
+        - hiv
+    ExameSorologicoResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        bolsaId:
+          type: string
+          format: uuid
+        funcionarioId:
+          type: string
+          format: uuid
+        hiv:
+          type: string
+          enum:
+            - POSITIVO
+            - NEGATIVO
+        hepatite:
+          type: string
+          enum:
+            - POSITIVO
+            - NEGATIVO
+        chagas:
+          type: string
+          enum:
+            - POSITIVO
+            - NEGATIVO
+        resultadoFinal:
+          type: string
+          enum:
+            - APROVADO
+            - REPROVADO
+        dataResultado:
+          type: string
+          format: date-time
+    CriarBolsaRequest:
+      type: object
+      properties:
+        agendamentoId:
+          type: string
+          format: uuid
+        tipagem:
+          type: string
+          minLength: 1
+          pattern: "(?i)(A|B|AB|O)[+-]"
+        dataColeta:
+          type: string
+          format: date
+        dataValidade:
+          type: string
+          format: date
+      required:
+        - agendamentoId
+        - dataColeta
+        - tipagem
+    LoginFuncionarioRequest:
+      type: object
+      properties:
+        matricula:
+          type: string
+          maxLength: 50
+          minLength: 0
+        senha:
+          type: string
+          maxLength: 72
+          minLength: 0
+      required:
+        - matricula
+        - senha
+    TokenResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        tipo:
+          type: string
+        expiresIn:
+          type: integer
+          format: int64
+    LoginDoadorRequest:
+      type: object
+      properties:
+        cpf:
+          type: string
+          pattern: "\\d{11}"
+        senha:
+          type: string
+          maxLength: 72
+          minLength: 0
+      required:
+        - senha
+    CadastroFuncionarioRequest:
+      type: object
+      properties:
+        matricula:
+          type: string
+          maxLength: 50
+          minLength: 0
+        nome:
+          type: string
+          minLength: 1
+        email:
+          type: string
+          format: email
+          minLength: 1
+        senha:
+          type: string
+          maxLength: 72
+          minLength: 0
+        perfil:
+          type: string
+          enum:
+            - TRIAGEM
+            - COLETA
+            - LABORATORIO
+            - ADMIN
+      required:
+        - email
+        - matricula
+        - nome
+        - perfil
+        - senha
+    CadastroDoadorRequest:
+      type: object
+      properties:
+        nome:
+          type: string
+          minLength: 1
+        email:
+          type: string
+          format: email
+          minLength: 1
+        cpf:
+          type: string
+          pattern: "\\d{11}"
+        senha:
+          type: string
+          maxLength: 72
+          minLength: 0
+        tipagem:
+          type: string
+          pattern: "(?i)(A|B|AB|O)[+-]"
+        dataNascimento:
+          type: string
+          format: date
+        genero:
+          type: string
+          pattern: "[MF]"
+      required:
+        - email
+        - nome
+        - senha
+    PreTriagemRequest:
+      type: object
+      properties:
+        peso:
+          type: number
+          minimum: 0
+        tatuagemRecente:
+          type: boolean
+        cirurgiaRecente:
+          type: boolean
+        teveFebre:
+          type: boolean
+      required:
+        - cirurgiaRecente
+        - peso
+        - tatuagemRecente
+        - teveFebre
+    PreTriagemResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        respondidaEm:
+          type: string
+          format: date-time
+        validaAte:
+          type: string
+          format: date-time
+        apto:
+          type: boolean
+        motivoInaptidao:
+          type:
+            - string
+            - "null"
+        respostas:
+          type: array
+          items:
+            $ref: "#/components/schemas/RespostaPreTriagemResponse"
+    RespostaPreTriagemResponse:
+      type: object
+      properties:
+        codigo:
+          type: string
+          enum:
+            - PESO
+            - TATUAGEM_RECENTE
+            - CIRURGIA_RECENTE
+            - TEVE_FEBRE
+        pergunta:
+          type: string
+        resposta: { }
+    RealizarAgendamentoRequest:
+      type: object
+      properties:
+        doadorId:
+          type:
+            - string
+            - "null"
+          format: uuid
+        slotId:
+          type: string
+          format: uuid
+      required:
+        - slotId
+    AgendamentoResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        doadorId:
+          type: string
+          format: uuid
+        slotId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum:
+            - PENDENTE
+            - CONCLUIDO
+            - CANCELADO
+            - FALTOU
+        codigoComprovante:
+          type:
+            - string
+            - "null"
+          format: uuid
+    RemarcarAgendamentoRequest:
+      type: object
+      properties:
+        slotId:
+          type: string
+          format: uuid
+      required:
+        - slotId
+    SlotDisponibilidadeResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        inicio:
+          type: string
+          format: date-time
+        capacidade:
+          type: integer
+          format: int32
+        ocupacao:
+          type: integer
+          format: int32
+        vagasDisponiveis:
+          type: integer
+          format: int32
+    HistoricoAuditoriaResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        bolsaId:
+          type: string
+          format: uuid
+        funcionarioId:
+          type:
+            - string
+            - "null"
+          format: uuid
+        statusAnterior:
+          type: string
+          enum:
+            - EM_ANALISE
+            - DISPONIVEL
+            - UTILIZADA
+            - DESCARTADA
+            - VENCIDA
+        statusNovo:
+          type: string
+          enum:
+            - EM_ANALISE
+            - DISPONIVEL
+            - UTILIZADA
+            - DESCARTADA
+            - VENCIDA
+        motivo:
+          type:
+            - string
+            - "null"
+        dataAlteracao:
+          type: string
+          format: date-time
+    EstoqueCritico:
+      type: object
+      properties:
+        tipagem:
+          type: string
+        disponiveis:
+          type: integer
+          format: int64
+        quantidadeCritica:
+          type: integer
+          format: int32
+    ComprovanteResponse:
+      type: object
+      properties:
+        codigo:
+          type: string
+          format: uuid
+        valido:
+          type: boolean
+        doador:
+          type: string
+        dataDoacao:
+          type: string
+          format: date
+    PerguntaPreTriagemResponse:
+      type: object
+      properties:
+        codigo:
+          type: string
+          enum:
+            - PESO
+            - TATUAGEM_RECENTE
+            - CIRURGIA_RECENTE
+            - TEVE_FEBRE
+        pergunta:
+          type: string
+    DoacaoResponse:
+      type: object
+      properties:
+        agendamentoId:
+          type: string
+          format: uuid
+        dataHora:
+          type: string
+          format: date-time
+        codigoComprovante:
+          type:
+            - string
+            - "null"
+          format: uuid
+  securitySchemes:
+    bearerAuth:
+      type: http
+      description: "Authorization: Bearer {token}"
+      scheme: bearer
+      bearerFormat: JWT

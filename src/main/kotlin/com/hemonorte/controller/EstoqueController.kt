@@ -9,6 +9,10 @@ import com.hemonorte.dto.AtualizarBolsaRequest
 import com.hemonorte.model.BolsaSangue
 import com.hemonorte.dto.BolsaSangueResponse
 import com.hemonorte.dto.toResponse
+import com.hemonorte.dto.HistoricoAuditoriaResponse
+import com.hemonorte.security.funcionarioAutenticado
+import com.hemonorte.service.EstoqueCritico
+import org.springframework.security.core.Authentication
 import jakarta.validation.Valid
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
@@ -47,7 +51,18 @@ class EstoqueController(
     fun atualizarBolsa(
         @PathVariable id: UUID,
         @RequestBody @Valid request: AtualizarBolsaRequest,
-    ): BolsaSangueResponse = bolsaSangueService.atualizarStatus(id, request.status).toResponse()
+        authentication: Authentication,
+    ): BolsaSangueResponse = bolsaSangueService.atualizarStatus(
+        id = id,
+        status = request.status,
+        motivo = request.motivo,
+        funcionarioId = authentication.funcionarioAutenticado().id,
+    ).toResponse()
+
+    @GetMapping("/{id}/historico")
+    @PreAuthorize("hasAnyRole('COLETA', 'LABORATORIO', 'ADMIN')")
+    fun historico(@PathVariable id: UUID): List<HistoricoAuditoriaResponse> =
+        bolsaSangueService.historico(id).map { it.toResponse() }
 
     @PutMapping("/minimos")
     @PreAuthorize("hasAnyRole('COLETA', 'LABORATORIO', 'ADMIN')")
@@ -56,10 +71,11 @@ class EstoqueController(
         return ResponseEntity.ok(estoqueMinimo)
     }
 
+    @GetMapping("/disponiveis")
+    @PreAuthorize("hasAnyRole('COLETA', 'LABORATORIO', 'ADMIN')")
+    fun disponiveisPorTipagem(): Map<String, Long> = estoqueService.disponiveisPorTipagem()
+
     @GetMapping("/criticos")
     @PreAuthorize("hasAnyRole('COLETA', 'LABORATORIO', 'ADMIN')")
-    fun listarEstoquesCriticos(): ResponseEntity<List<EstoqueMinimo>> {
-        val criticos = estoqueService.listarEstoquesCriticos()
-        return ResponseEntity.ok(criticos)
-    }
+    fun listarEstoquesCriticos(): List<EstoqueCritico> = estoqueService.listarEstoquesCriticos()
 }

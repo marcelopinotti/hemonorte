@@ -36,7 +36,7 @@ class Triagem(
         protected set
 
     @Column(nullable = false, precision = 5, scale = 2)
-    var peso: BigDecimal = validarPeso(peso)
+    var peso: BigDecimal = RegraTriagem.validarPeso(peso)
         protected set
 
     @Column(name = "tatuagem_recente", nullable = false)
@@ -52,13 +52,13 @@ class Triagem(
         protected set
 
     @Column(nullable = false)
-    var apto: Boolean = calcularAptidao(peso, tatuagemRecente, cirurgiaRecente, teveFebre)
+    var apto: Boolean = RegraTriagem.avaliar(peso, tatuagemRecente, cirurgiaRecente, teveFebre).apto
         protected set
 
     @Column(name = "motivo_inaptidao")
-    var motivoInaptidao: String? = gerarMotivoInaptidao(peso, tatuagemRecente, cirurgiaRecente, teveFebre)
+    var motivoInaptidao: String? =
+        RegraTriagem.avaliar(peso, tatuagemRecente, cirurgiaRecente, teveFebre).motivoInaptidao
         protected set
-
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -69,37 +69,4 @@ class Triagem(
     override fun hashCode(): Int = id.hashCode()
 
     override fun toString(): String = "Triagem(id=$id, apto=$apto)"
-
-    private companion object {
-
-        val PESO_MINIMO: BigDecimal = BigDecimal("50.0")
-
-        fun validarPeso(valor: BigDecimal): BigDecimal {
-            require(valor > BigDecimal.ZERO) { "Peso deve ser positivo" }
-            return valor
-        }
-
-        fun calcularAptidao(
-            peso: BigDecimal,
-            tatuagemRecente: Boolean,
-            cirurgiaRecente: Boolean,
-            teveFebre: Boolean,
-        ): Boolean =
-            peso >= PESO_MINIMO && !tatuagemRecente && !cirurgiaRecente && !teveFebre
-
-        fun gerarMotivoInaptidao(
-            peso: BigDecimal,
-            tatuagemRecente: Boolean,
-            cirurgiaRecente: Boolean,
-            teveFebre: Boolean,
-        ): String? {
-            val motivos = buildList {
-                if (peso < PESO_MINIMO) add("peso abaixo do mínimo (${PESO_MINIMO}kg)")
-                if (tatuagemRecente) add("tatuagem recente")
-                if (cirurgiaRecente) add("cirurgia recente")
-                if (teveFebre) add("febre recente")
-            }
-            return if (motivos.isEmpty()) null else motivos.joinToString("; ")
-        }
-    }
 }

@@ -23,6 +23,10 @@ spring:
     enabled: true
     locations: classpath:db/migration
 
+springdoc:
+  swagger-ui:
+    url: /openapi.yaml
+
 jwt:
   secret: ${JWT_SECRET}
   expiration: ${JWT_EXPIRATION:86400000}
@@ -31,6 +35,12 @@ management:
     web:
       exposure:
         include: health,prometheus
+  metrics:
+    distribution:
+      percentiles-histogram:
+        "[http.server.requests]": true
+      slo:
+        "[http.server.requests]": 500ms
 
 
 

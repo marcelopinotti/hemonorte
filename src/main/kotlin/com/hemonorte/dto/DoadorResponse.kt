@@ -14,6 +14,7 @@ data class DoadorResponse(
     val dataNascimento: LocalDate,
     val genero: Char,
     val criadoEm: Instant,
+    val ativo: Boolean,
 )
 
 fun Doador.toResponse() = DoadorResponse(
@@ -25,4 +26,5 @@ fun Doador.toResponse() = DoadorResponse(
     dataNascimento = dataNascimento,
     genero = genero,
     criadoEm = criadoEm,
+    ativo = ativo,
 )

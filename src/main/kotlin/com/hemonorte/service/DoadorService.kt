@@ -2,6 +2,8 @@ package com.hemonorte.service
 
 import com.hemonorte.exception.ConflitoException
 import com.hemonorte.model.Doador
+import com.hemonorte.model.enums.StatusAgendamento
+import com.hemonorte.repository.AgendamentoRepository
 import com.hemonorte.repository.DoadorRepository
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.security.crypto.password.PasswordEncoder
@@ -15,6 +17,7 @@ import java.util.UUID
 class DoadorService(
     private val doadorRepository: DoadorRepository,
     private val passwordEncoder: PasswordEncoder,
+    private val agendamentoRepository: AgendamentoRepository,
 ) {
 
     @Transactional
@@ -86,13 +89,11 @@ class DoadorService(
     }
 
     @Transactional
-    fun excluir(id: UUID) {
-        try {
-            doadorRepository.delete(buscar(id))
-            doadorRepository.flush()
-        } catch (_: DataIntegrityViolationException) {
-            throw ConflitoException("Doador possui histórico vinculado")
-        }
+    fun inativar(id: UUID) {
+        val doador = buscar(id)
+        agendamentoRepository.findByDoadorIdAndStatus(id, StatusAgendamento.PENDENTE).forEach { it.cancelar() }
+        doador.inativar()
+        doadorRepository.saveAndFlush(doador)
     }
 
     private fun codificar(senha: String): String =

@@ -1,5 +1,6 @@
 package com.hemonorte.controller
 
+import com.hemonorte.exception.ConflitoException
 import com.hemonorte.exception.InaptidaoDoacaoException
 import com.hemonorte.model.Agendamento
 import com.hemonorte.model.Doador
@@ -35,7 +36,7 @@ class AgendamentoControllerTest {
         tipagem = "O+",
         dataNascimento = LocalDate.now().minusYears(30),
         genero = 'F',
-        cpf = "12345678901",
+        cpf = "12345678909",
     )
 
     private val slot = SlotAgenda(Instant.now().plusSeconds(86_400), 5)
@@ -109,21 +110,44 @@ class AgendamentoControllerTest {
     }
 
     @Test
-    fun `SENTINELA - slot lotado devolve 400 hoje - contrato da issue 9 prevê 409`() {
-        // Mesma familia da sentinela anterior: o contrato da #9 pede 409 para lotacao;
-        // hoje cai no IllegalArgumentException -> 400 do handler.
+    fun `slot lotado devolve 409`() {
         val doadorId = UUID.randomUUID()
         val slotId = UUID.randomUUID()
         Mockito.`when`(service.realizarAgendamento(doadorId, slotId))
-            .thenThrow(IllegalArgumentException("Slot lotado para este horário"))
+            .thenThrow(ConflitoException("Slot lotado para este horário"))
 
         mockMvc.perform(
             post("/agendamentos")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""{"doadorId":"$doadorId","slotId":"$slotId"}""")
         )
-            .andExpect(status().isBadRequest)
+            .andExpect(status().isConflict)
             .andExpect(jsonPath("$.erro").value("Slot lotado para este horário"))
+    }
+
+    @Test
+    fun `slot inexistente devolve 404`() {
+        val doadorId = UUID.randomUUID()
+        val slotId = UUID.randomUUID()
+        Mockito.`when`(service.realizarAgendamento(doadorId, slotId))
+            .thenThrow(NoSuchElementException("Slot de agenda não encontrado"))
+
+        mockMvc.perform(
+            post("/agendamentos")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"doadorId":"$doadorId","slotId":"$slotId"}""")
+        )
+            .andExpect(status().isNotFound)
+    }
+
+    @Test
+    fun `transicao repetida devolve 400`() {
+        val id = UUID.randomUUID()
+        Mockito.`when`(service.registrarFaltaResponse(id))
+            .thenThrow(IllegalArgumentException("Só é possível registrar falta em agendamento PENDENTE"))
+
+        mockMvc.perform(patch("/agendamentos/{id}/falta", id))
+            .andExpect(status().isBadRequest)
     }
 
     @Test

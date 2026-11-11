@@ -54,10 +54,22 @@ class DoadorController(
         doadorService.alterarSenha(authentication.doadorAutenticado().id, request.senha)
     }
 
+    @DeleteMapping("/me")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("hasAuthority('TIPO_DOADOR')")
+    fun inativarMe(authentication: Authentication) {
+        doadorService.inativar(authentication.doadorAutenticado().id)
+    }
+
     @GetMapping("/me/agendamentos")
     @PreAuthorize("hasAuthority('TIPO_DOADOR')")
     fun meusAgendamentos(authentication: Authentication): List<AgendamentoResponse> =
         requireNotNull(agendamentoService).listarPorDoadorResponses(authentication.doadorAutenticado().id)
+
+    @GetMapping("/me/doacoes")
+    @PreAuthorize("hasAuthority('TIPO_DOADOR')")
+    fun minhasDoacoes(authentication: Authentication): List<DoacaoResponse> =
+        requireNotNull(agendamentoService).listarDoacoes(authentication.doadorAutenticado().id)
 
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('TRIAGEM', 'COLETA', 'ADMIN')")
@@ -87,7 +99,7 @@ class DoadorController(
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @PreAuthorize("hasRole('ADMIN')")
-    fun excluir(@PathVariable id: UUID) {
-        doadorService.excluir(id)
+    fun inativar(@PathVariable id: UUID) {
+        doadorService.inativar(id)
     }
 }

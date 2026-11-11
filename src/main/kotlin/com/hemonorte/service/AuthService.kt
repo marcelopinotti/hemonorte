@@ -20,7 +20,7 @@ class AuthService(
 
     fun autenticarDoador(cpf: String, senha: String): TokenResponse {
         val doador = doadorRepository.findByCpf(cpf) ?: credenciaisInvalidas()
-        if (!validarSenha(senha, doador.senhaHash)) credenciaisInvalidas()
+        if (!validarSenha(senha, doador.senhaHash) || !doador.ativo) credenciaisInvalidas()
 
         val tipo = TipoUsuario.DOADOR
         return TokenResponse(

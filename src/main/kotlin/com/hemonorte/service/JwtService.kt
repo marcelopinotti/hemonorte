@@ -18,7 +18,12 @@ class JwtService(
     @Value("\${jwt.expiration}") private val jwtExpiration: Long,
 ) {
 
-    private val signingKey: SecretKey = Keys.hmacShaKeyFor(jwtSecret.toByteArray(StandardCharsets.UTF_8))
+    private val signingKey: SecretKey = jwtSecret.toByteArray(StandardCharsets.UTF_8).let { bytes ->
+        require(bytes.size >= TAMANHO_MINIMO_CHAVE) {
+            "JWT_SECRET deve ter pelo menos $TAMANHO_MINIMO_CHAVE bytes (HS512); recebido: ${bytes.size}"
+        }
+        Keys.hmacShaKeyFor(bytes)
+    }
 
     fun gerarToken(id: UUID, tipo: String, perfil: PerfilFuncionario? = null): String {
         require(tipo == TIPO_DOADOR || tipo == TIPO_FUNCIONARIO) { "Tipo de usuário inválido: $tipo" }
@@ -99,5 +104,6 @@ class JwtService(
         const val CLAIM_PERFIL = "perfil"
         const val TIPO_DOADOR = "DOADOR"
         const val TIPO_FUNCIONARIO = "FUNCIONARIO"
+        const val TAMANHO_MINIMO_CHAVE = 64
     }
 }

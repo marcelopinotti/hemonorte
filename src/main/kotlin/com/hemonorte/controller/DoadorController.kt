@@ -66,6 +66,11 @@ class DoadorController(
     fun meusAgendamentos(authentication: Authentication): List<AgendamentoResponse> =
         requireNotNull(agendamentoService).listarPorDoadorResponses(authentication.doadorAutenticado().id)
 
+    @GetMapping("/me/doacoes")
+    @PreAuthorize("hasAuthority('TIPO_DOADOR')")
+    fun minhasDoacoes(authentication: Authentication): List<DoacaoResponse> =
+        requireNotNull(agendamentoService).listarDoacoes(authentication.doadorAutenticado().id)
+
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('TRIAGEM', 'COLETA', 'ADMIN')")
     fun buscar(@PathVariable id: UUID): DoadorResponse = doadorService.buscar(id).toResponse()

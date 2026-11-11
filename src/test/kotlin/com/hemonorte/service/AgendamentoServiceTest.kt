@@ -254,6 +254,49 @@ class AgendamentoServiceTest {
         assertEquals(StatusAgendamento.PENDENTE, service.realizarAgendamento(doador.id, slot.id).status)
     }
 
+    @Test
+    fun `remarcar cancela o horario atual e reserva o novo`() {
+        prepararEntidades()
+        val atual = Agendamento(doador, SlotAgenda(Instant.parse("2035-11-12T12:00:00Z"), 5))
+        Mockito.`when`(agendamentoRepository.findByIdAndDoadorId(atual.id, doador.id)).thenReturn(Optional.of(atual))
+        Mockito.`when`(agendamentoRepository.save(qualquer())).thenAnswer { it.arguments[0] as Agendamento }
+
+        val novo = service.remarcar(atual.id, doador.id, slot.id)
+
+        assertEquals(StatusAgendamento.CANCELADO, atual.status)
+        assertEquals(StatusAgendamento.PENDENTE, novo.status)
+        assertEquals(slot, novo.slot)
+    }
+
+    @Test
+    fun `remarcar para o mesmo horario ou agendamento de outro doador e rejeitado`() {
+        val atual = Agendamento(doador, slot)
+        Mockito.`when`(agendamentoRepository.findByIdAndDoadorId(atual.id, doador.id)).thenReturn(Optional.of(atual))
+
+        assertFailsWith<IllegalArgumentException> { service.remarcar(atual.id, doador.id, slot.id) }
+        assertFailsWith<AccessDeniedException> { service.remarcar(atual.id, java.util.UUID.randomUUID(), slot.id) }
+        assertEquals(StatusAgendamento.PENDENTE, atual.status)
+    }
+
+    @Test
+    fun `remarcar agendamento ja concluido e rejeitado`() {
+        val concluido = Agendamento(doador, SlotAgenda(Instant.parse("2035-11-12T12:00:00Z"), 5)).also { it.concluir() }
+        Mockito.`when`(agendamentoRepository.findByIdAndDoadorId(concluido.id, doador.id)).thenReturn(Optional.of(concluido))
+
+        assertFailsWith<IllegalArgumentException> { service.remarcar(concluido.id, doador.id, slot.id) }
+        Mockito.verify(agendamentoRepository, Mockito.never()).save(qualquer())
+    }
+
+    @Test
+    fun `historico de doacoes lista concluidas da mais recente para a mais antiga`() {
+        val antiga = Agendamento(doador, SlotAgenda(Instant.parse("2035-01-10T12:00:00Z"), 5)).also { it.concluir() }
+        val recente = Agendamento(doador, SlotAgenda(Instant.parse("2035-06-10T12:00:00Z"), 5)).also { it.concluir() }
+        Mockito.`when`(agendamentoRepository.findByDoadorIdAndStatus(doador.id, StatusAgendamento.CONCLUIDO))
+            .thenReturn(listOf(antiga, recente))
+
+        assertEquals(listOf(recente.id, antiga.id), service.listarDoacoes(doador.id).map { it.agendamentoId })
+    }
+
     private fun preTriagem(
         respondidaEm: Instant = agora.minus(Duration.ofDays(1)),
         teveFebre: Boolean = false,

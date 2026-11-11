@@ -1,5 +1,8 @@
 package com.hemonorte.controller
 
+import com.hemonorte.dto.RemarcarAgendamentoRequest
+import com.hemonorte.security.doadorAutenticado
+
 import com.hemonorte.dto.RealizarAgendamentoRequest
 import com.hemonorte.model.Agendamento
 import com.hemonorte.dto.AgendamentoResponse
@@ -70,6 +73,15 @@ class AgendamentoController(
         }
         return ResponseEntity.ok(agendamento)
     }
+
+    @PatchMapping("/{id}/remarcar")
+    @PreAuthorize("hasAuthority('TIPO_DOADOR')")
+    fun remarcar(
+        @PathVariable id: UUID,
+        @RequestBody @Valid request: RemarcarAgendamentoRequest,
+        authentication: Authentication,
+    ): AgendamentoResponse =
+        agendamentoService.remarcar(id, authentication.doadorAutenticado().id, request.slotId).toResponse()
 
     @PatchMapping("/{id}/falta")
     @PreAuthorize("hasAnyRole('TRIAGEM', 'ADMIN')")

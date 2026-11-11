@@ -15,6 +15,8 @@ import java.time.Clock
 import java.util.UUID
 import com.hemonorte.dto.AgendamentoResponse
 import com.hemonorte.dto.toResponse
+import com.hemonorte.dto.DoacaoResponse
+import com.hemonorte.dto.toDoacaoResponse
 import org.springframework.security.access.AccessDeniedException
 
 @Service
@@ -76,6 +78,22 @@ class AgendamentoService(
         agendamento.cancelar()
         return agendamentoRepository.save(agendamento)
     }
+
+    @Transactional
+    fun remarcar(agendamentoId: UUID, doadorId: UUID, novoSlotId: UUID): Agendamento {
+        val atual = agendamentoRepository.findByIdAndDoadorId(agendamentoId, doadorId)
+            .orElseThrow { AccessDeniedException("Acesso negado") }
+        require(atual.slot.id != novoSlotId) { "O novo horário deve ser diferente do atual" }
+        atual.cancelar()
+        agendamentoRepository.saveAndFlush(atual)
+        return realizarAgendamento(doadorId, novoSlotId)
+    }
+
+    @Transactional(readOnly = true)
+    fun listarDoacoes(doadorId: UUID): List<DoacaoResponse> =
+        agendamentoRepository.findByDoadorIdAndStatus(doadorId, StatusAgendamento.CONCLUIDO)
+            .sortedByDescending { it.slot.inicio }
+            .map { it.toDoacaoResponse() }
 
     @Transactional
     fun cancelarAgendamentoDoDoador(agendamentoId: UUID, doadorId: UUID): Agendamento {

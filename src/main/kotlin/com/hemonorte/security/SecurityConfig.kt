@@ -21,8 +21,18 @@ class SecurityConfig(private val jwtAuthenticationFilter: JwtAuthenticationFilte
         .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
         .authorizeHttpRequests {
             it.requestMatchers(HttpMethod.POST, "/api/doador", "/auth/login/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/slots", "/comprovantes/*", "/actuator/health", "/actuator/prometheus")
-                .permitAll()
+                .requestMatchers(
+                    HttpMethod.GET,
+                    "/slots",
+                    "/comprovantes/*",
+                    "/actuator/health",
+                    "/actuator/prometheus",
+                    "/v3/api-docs/**",
+                    "/v3/api-docs.yaml",
+                    "/openapi.yaml",
+                    "/swagger-ui/**",
+                    "/swagger-ui.html",
+                ).permitAll()
                 .requestMatchers(
                     "/api/funcionario/**",
                     "/api/doador/**",
@@ -33,9 +43,6 @@ class SecurityConfig(private val jwtAuthenticationFilter: JwtAuthenticationFilte
                     "/estoque/**",
                     "/exames-sorologicos/**",
                     "/slots/**",
-                    "/v3/api-docs/**",
-                    "/swagger-ui/**",
-                    "/swagger-ui.html",
                 ).authenticated()
                 .anyRequest().denyAll()
         }

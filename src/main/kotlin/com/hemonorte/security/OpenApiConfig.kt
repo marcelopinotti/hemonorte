@@ -41,7 +41,7 @@ class OpenApiConfig {
     }
 
     private fun isPublic(method: String, path: String): Boolean =
-        (method == "POST" && (path == "/api/doador" || path.startsWith("/auth/login/"))) || (method == "GET" && path == "/slots")
+        (method == "POST" && (path == "/api/doador" || path.startsWith("/auth/login/"))) || (method == "GET" && (path == "/slots" || path.startsWith("/comprovantes/")))
 
     private companion object {
         const val BEARER_AUTH = "bearerAuth"

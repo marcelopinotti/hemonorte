@@ -8,6 +8,7 @@ import com.hemonorte.model.Agendamento
 import com.hemonorte.model.Doador
 import com.hemonorte.model.Funcionario
 import com.hemonorte.model.SlotAgenda
+import com.hemonorte.cpfDeTeste
 import com.hemonorte.model.enums.PerfilFuncionario
 import com.hemonorte.repository.AgendamentoRepository
 import com.hemonorte.repository.DoadorRepository
@@ -186,7 +187,7 @@ class CadastroPersistenciaIntegrationTest {
                         tipagem = "O+",
                         dataNascimento = LocalDate.of(1990, 1, 1),
                         genero = 'M',
-                        cpf = "%011d".format(10_000L + tentativa * 10 + numero),
+                        cpf = cpfDeTeste(10_000L + tentativa * 10 + numero),
                     ),
                 )
             }
@@ -232,7 +233,7 @@ class CadastroPersistenciaIntegrationTest {
                     tipagem = "O+",
                     dataNascimento = LocalDate.of(1990, 1, 1),
                     genero = 'M',
-                    cpf = "%011d".format(20_000L + numero),
+                    cpf = cpfDeTeste(20_000L + numero),
                 ),
             )
         }
@@ -251,8 +252,8 @@ class CadastroPersistenciaIntegrationTest {
     @Test
     fun `cadastro de doador grava BCrypt real com salts distintos e nao expoe credencial`() {
         val senha = "Senha-Segura-123"
-        val primeiro = cadastrarDoadorPorApi("11111111111", "primeiro@exemplo.local", senha)
-        val segundo = cadastrarDoadorPorApi("22222222222", "segundo@exemplo.local", senha)
+        val primeiro = cadastrarDoadorPorApi("11144477735", "primeiro@exemplo.local", senha)
+        val segundo = cadastrarDoadorPorApi("22255588846", "segundo@exemplo.local", senha)
 
         val hashPrimeiro = doadorRepository.findById(primeiro.id).orElseThrow().senhaHash
         val hashSegundo = doadorRepository.findById(segundo.id).orElseThrow().senhaHash
@@ -268,7 +269,7 @@ class CadastroPersistenciaIntegrationTest {
     @Test
     fun `atualizacao de doador preserva CPF e hash existente`() {
         val senha = "Senha-Original-123"
-        val doador = cadastrarDoadorPorApi("33333333333", "atualizavel@exemplo.local", senha)
+        val doador = cadastrarDoadorPorApi("33366699957", "atualizavel@exemplo.local", senha)
         val hashOriginal = doadorRepository.findById(doador.id).orElseThrow().senhaHash
 
         mockMvc.perform(
@@ -284,11 +285,11 @@ class CadastroPersistenciaIntegrationTest {
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.id").value(doador.id.toString()))
-            .andExpect(jsonPath("$.cpf").value("33333333333"))
+            .andExpect(jsonPath("$.cpf").value("33366699957"))
             .andExpect(jsonPath("$.senhaHash").doesNotExist())
 
         val persistido = doadorRepository.findById(doador.id).orElseThrow()
-        assertEquals("33333333333", persistido.cpf)
+        assertEquals("33366699957", persistido.cpf)
         assertEquals(hashOriginal, persistido.senhaHash)
         assertTrue(passwordEncoder.matches(senha, persistido.senhaHash))
 
@@ -303,7 +304,7 @@ class CadastroPersistenciaIntegrationTest {
     fun `alteracao de senha gera novo BCrypt e invalida a senha anterior`() {
         val senhaAntiga = "Senha-Antiga-123"
         val senhaNova = "Senha-Nova-456"
-        val doador = cadastrarDoadorPorApi("44444444444", "senha@exemplo.local", senhaAntiga)
+        val doador = cadastrarDoadorPorApi("44477700083", "senha@exemplo.local", senhaAntiga)
 
         mockMvc.perform(
             put("/api/doador/{id}/senha", doador.id)
@@ -321,8 +322,8 @@ class CadastroPersistenciaIntegrationTest {
     @Test
     fun `concorrencia de CPF ou e-mail duplicado devolve exatamente uma criacao e um conflito`() {
         val cenarios = listOf(
-            Par("55555555555", "66666666666", "mesmo-cpf@exemplo.local", "mesmo-cpf@exemplo.local"),
-            Par("77777777777", "88888888888", "mesmo-email@exemplo.local", "mesmo-email@exemplo.local"),
+            Par("55588811194", "66699922203", "mesmo-cpf@exemplo.local", "mesmo-cpf@exemplo.local"),
+            Par("77700033340", "88811144450", "mesmo-email@exemplo.local", "mesmo-email@exemplo.local"),
         )
 
         cenarios.forEach { cenario ->
@@ -425,7 +426,7 @@ class CadastroPersistenciaIntegrationTest {
                 tipagem = "O+",
                 dataNascimento = LocalDate.of(1990, 3, 15),
                 genero = 'F',
-                cpf = "99999999999",
+                cpf = "99922255561",
             ),
         )
         val slot = slotAgendaRepository.save(
@@ -505,7 +506,7 @@ class CadastroPersistenciaIntegrationTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
                     """
-                    {"nome":"Doador Futuro","email":"futuro@exemplo.local","cpf":"12121212121",
+                    {"nome":"Doador Futuro","email":"futuro@exemplo.local","cpf":"12131415168",
                      "senha":"Senha-Futura-123","tipagem":"O+",
                      "dataNascimento":"2999-01-01","genero":"F"}
                     """.trimIndent(),
@@ -520,7 +521,7 @@ class CadastroPersistenciaIntegrationTest {
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
                 """.trimIndent(),
                 UUID.randomUUID(),
-                "13131313131",
+                "13141516146",
                 "Doador Bypass",
                 "bypass@exemplo.local",
                 "hash-bypass",
@@ -543,7 +544,7 @@ class CadastroPersistenciaIntegrationTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
                     """
-                    {"nome":"$nomeLongo","email":"longo@exemplo.local","cpf":"14141414141",
+                    {"nome":"$nomeLongo","email":"longo@exemplo.local","cpf":"14151617124",
                      "senha":"Senha-Longa-123","tipagem":"O+","dataNascimento":"1990-01-01",
                      "genero":"F"}
                     """.trimIndent(),

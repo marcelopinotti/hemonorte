@@ -31,7 +31,7 @@ class DoadorControllerTest {
         tipagem = "O+",
         dataNascimento = LocalDate.now().minusYears(30),
         genero = 'F',
-        cpf = "12345678901",
+        cpf = "12345678909",
     )
 
     @Test
@@ -51,7 +51,7 @@ class DoadorControllerTest {
 
         mockMvc.perform(get("/api/doador/{id}", id))
             .andExpect(status().isOk)
-            .andExpect(jsonPath("$.cpf").value("12345678901"))
+            .andExpect(jsonPath("$.cpf").value("12345678909"))
             .andExpect(jsonPath("$.senhaHash").doesNotExist())
     }
 
@@ -71,7 +71,7 @@ class DoadorControllerTest {
             service.cadastrar(
                 nome = "Ana Souza",
                 email = "ana@email.com",
-                cpf = "12345678901",
+                cpf = "12345678909",
                 senha = "senha-segura",
                 tipagem = "O+",
                 dataNascimento = LocalDate.of(1996, 8, 15),
@@ -82,7 +82,7 @@ class DoadorControllerTest {
         mockMvc.perform(
             post("/api/doador")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"nome":"Ana Souza","email":"ana@email.com","cpf":"12345678901","senha":"senha-segura","tipagem":"O+","dataNascimento":"1996-08-15","genero":"F"}"""),
+                .content("""{"nome":"Ana Souza","email":"ana@email.com","cpf":"12345678909","senha":"senha-segura","tipagem":"O+","dataNascimento":"1996-08-15","genero":"F"}"""),
         )
             .andExpect(status().isConflict)
             .andExpect(jsonPath("$.erro").value("CPF ou e-mail já cadastrado"))

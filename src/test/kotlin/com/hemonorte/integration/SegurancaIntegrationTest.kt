@@ -155,7 +155,7 @@ class SegurancaIntegrationTest {
             Doador(
                 nome = "Outro Doador",
                 email = "outro@teste.local",
-                cpf = "12345678901",
+                cpf = "12345678909",
                 senhaHash = passwordEncoder.encode("Senha-123")!!,
                 tipagem = "A+",
                 dataNascimento = LocalDate.of(1988, 2, 2),
@@ -236,7 +236,7 @@ class SegurancaIntegrationTest {
             Doador(
                 nome = "Outro Doador",
                 email = "outro-agendamento@teste.local",
-                cpf = "12345678901",
+                cpf = "12345678909",
                 senhaHash = passwordEncoder.encode("Senha-123")!!,
                 tipagem = "A+",
                 dataNascimento = LocalDate.of(1988, 2, 2),

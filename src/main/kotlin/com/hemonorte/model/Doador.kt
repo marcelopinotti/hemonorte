@@ -58,7 +58,7 @@ class Doador(
     val criadoEm: Instant = Instant.now()
 
     init {
-        require(CPF_REGEX.matches(cpf)) { "CPF deve ter 11 dígitos" }
+        require(cpfValido(cpf)) { "CPF inválido" }
     }
 
     fun alterarNome(novoNome: String) {
@@ -98,6 +98,14 @@ class Doador(
     private companion object {
         val CPF_REGEX = Regex("\\d{11}")
         val TIPAGENS_VALIDAS = setOf("A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-")
+
+        fun cpfValido(cpf: String): Boolean {
+            if (!CPF_REGEX.matches(cpf) || cpf.all { it == cpf[0] }) return false
+            val digitos = cpf.map { it - '0' }
+            fun digitoVerificador(tamanho: Int) =
+                digitos.take(tamanho).mapIndexed { i, d -> d * (tamanho + 1 - i) }.sum() * 10 % 11 % 10
+            return digitoVerificador(9) == digitos[9] && digitoVerificador(10) == digitos[10]
+        }
 
         fun validarNome(valor: String): String {
             require(valor.isNotBlank()) { "Nome é obrigatório" }

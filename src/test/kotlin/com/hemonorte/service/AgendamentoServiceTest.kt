@@ -44,7 +44,7 @@ class AgendamentoServiceTest {
         tipagem = "O+",
         dataNascimento = LocalDate.of(1990, 1, 1),
         genero = 'F',
-        cpf = "12345678901",
+        cpf = "12345678909",
     )
     private val slot = SlotAgenda(Instant.parse("2035-11-10T12:00:00Z"), 5)
 

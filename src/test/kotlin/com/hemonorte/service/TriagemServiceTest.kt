@@ -48,7 +48,7 @@ class TriagemServiceTest {
             tipagem = "O+",
             dataNascimento = LocalDate.of(1990, 1, 1),
             genero = 'F',
-            cpf = "12345678901",
+            cpf = "12345678909",
         ),
         SlotAgenda(Instant.now().plusSeconds(86_400), 5),
     )

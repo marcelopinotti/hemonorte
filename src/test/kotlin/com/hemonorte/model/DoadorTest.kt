@@ -16,7 +16,7 @@ class DoadorTest {
         tipagem: String = "O+",
         dataNascimento: LocalDate = LocalDate.now().minusYears(30),
         genero: Char = 'F',
-        cpf: String = "12345678901",
+        cpf: String = "12345678909",
     ) = Doador(
         nome = nome,
         email = email,
@@ -94,12 +94,32 @@ class DoadorTest {
         assertFailsWith<IllegalArgumentException> { doador(cpf = "1234567890") }
         assertFailsWith<IllegalArgumentException> { doador(cpf = "123456789012") }
         assertFailsWith<IllegalArgumentException> { doador(cpf = "1234567890a") }
-        assertEquals("12345678901", doador().cpf)
+        assertEquals("12345678909", doador().cpf)
     }
 
     @Test
-    fun `cpf de onze zeros e aceito - ausencia de digito verificador documentada (QA-007)`() {
-        assertEquals("00000000000", doador(cpf = "00000000000").cpf)
+    fun `cpf com digito verificador invalido e rejeitado`() {
+        listOf("12345678901", "12345678919", "52998224726").forEach { cpf ->
+            val erro = assertFailsWith<IllegalArgumentException>(cpf) { doador(cpf = cpf) }
+            assertEquals("CPF inválido", erro.message)
+        }
+    }
+
+    @Test
+    fun `cpf com todos os digitos iguais e rejeitado`() {
+        ('0'..'9').forEach { d -> assertFailsWith<IllegalArgumentException> { doador(cpf = d.toString().repeat(11)) } }
+    }
+
+    @Test
+    fun `cpfs com digitos verificadores corretos sao aceitos`() {
+        listOf("52998224725", "11144477735", "10120230364").forEach { assertEquals(it, doador(cpf = it).cpf) }
+    }
+    @Test
+    fun `doador nasce ativo e pode ser inativado`() {
+        val d = doador()
+        assertEquals(true, d.ativo)
+        d.inativar()
+        assertEquals(false, d.ativo)
     }
 
     // --- data de nascimento (correção dos devs) ---

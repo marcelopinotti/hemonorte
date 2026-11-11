@@ -25,7 +25,7 @@ class DoadorServiceTest {
         val doador = service.cadastrar(
             nome = "Ana Souza",
             email = "ana@email.com",
-            cpf = "12345678901",
+            cpf = "12345678909",
             senha = "senha-segura",
             tipagem = "O+",
             dataNascimento = LocalDate.now().minusYears(30),
@@ -40,7 +40,7 @@ class DoadorServiceTest {
         val doador = Doador(
             nome = "Ana Souza",
             email = "ana@email.com",
-            cpf = "12345678901",
+            cpf = "12345678909",
             senhaHash = "hash-original",
             tipagem = "O+",
             dataNascimento = LocalDate.now().minusYears(30),
